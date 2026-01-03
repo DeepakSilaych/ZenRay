@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  @apply bg-xray-bg text-xray-text;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-xray-border rounded-full;
+}
+/* 
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-xray-dim;
+} */
+
+/* Table styles */
+table {
+  @apply w-full text-sm;
+}
+
+th {
+  @apply text-left text-xray-muted font-medium text-xs uppercase tracking-wider;
+}
+
+td {
+  @apply text-xray-text;
+}
