@@ -63,20 +63,20 @@ I treat one pipeline execution as a **Run** and each decision stage as a **Step*
 
 ## 2) SERVER
 
-### APIs (what exists)
+### APIs (table)
 
-- **Ingest**
-  - `POST /ingest`: accept runs + steps (batched), enqueue to Redis, return quickly
-  - `GET /ingest/stats`: queue stats
-- **Query**
-  - `GET /runs`: list runs (filters: pipeline/status/time; supports limit/offset)
-  - `GET /runs/{run_id}`: run detail + step timeline
-  - `GET /steps`: search steps (filters include kind, run_id, drop ratio)
-  - `GET /steps/{step_id}`: step detail + candidate set + artifacts
-  - `GET /steps/{step_id}/candidates`: raw candidate set blob
-  - `GET /runs/{run_id}/trace?q=...`: trace a candidate through steps in a run
-  - `GET /compare`: compare two runs
-  - `GET /health`: health check
+| Method | Path                          | What it does                            | Request params/body (high level)                                                   | Response (high level)                                            |
+| ------ | ----------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| POST   | `/ingest`                     | Ingest run + step events (queued)       | Body: `{ schema_version, runs?: Run[], steps?: Step[] }`                           | `{ accepted_runs, accepted_steps, queued }`                      |
+| GET    | `/ingest/stats`               | Ingest queue stats                      | —                                                                                  | `{ queue_length, processed_runs, processed_steps, errors, ... }` |
+| GET    | `/runs`                       | List/search runs                        | Query: `pipeline_name?`, `status?`, `start_time?`, `end_time?`, `limit`, `offset`  | `RunSummary[]`                                                   |
+| GET    | `/runs/{run_id}`              | Run detail + step timeline              | Path: `run_id`                                                                     | `{ run, steps[] }`                                               |
+| GET    | `/runs/{run_id}/trace`        | Trace a candidate through a run         | Query: `q` (id/name/title search)                                                  | `{ found, journey[] }`                                           |
+| GET    | `/steps`                      | List/search steps                       | Query: `kind?`, `run_id?`, `min_drop_ratio?`, `max_drop_ratio?`, `limit`, `offset` | `StepSummary[]`                                                  |
+| GET    | `/steps/{step_id}`            | Step detail + candidate set + artifacts | Path: `step_id`                                                                    | `{ step, candidate_set?, artifacts? }`                           |
+| GET    | `/steps/{step_id}/candidates` | Raw candidate set blob                  | Path: `step_id`                                                                    | CandidateSet blob (or message)                                   |
+| GET    | `/compare`                    | Compare two runs                        | Query: `run_id_a`, `run_id_b`                                                      | comparison payload (runs + step diffs)                           |
+| GET    | `/health`                     | Health check                            | —                                                                                  | `{ status, version, queue_length }`                              |
 
 ### How things work (para)
 
@@ -112,6 +112,17 @@ Full (for “why” debugging):
 - record scores: `xray.score(candidate, value)`
 - attach artifacts: `xray.artifact("prompt", ...)`, `xray.artifact("response", ...)`
 - add metrics/tags: `xray.metric(...)`, `xray.tag(...)`
+
+### SDK requirements (env + init)
+
+| Config                | Where                                 |            Type |                 Default | What it affects              |
+| --------------------- | ------------------------------------- | --------------: | ----------------------: | ---------------------------- |
+| `XRAY_ENDPOINT`       | env / `xray.init(endpoint=...)`       |          string | `http://localhost:8000` | Backend base URL             |
+| `XRAY_DISABLED`       | env / `xray.init(disabled=...)`       |            bool |                 `false` | Turns tracing on/off         |
+| `XRAY_SAMPLE_RATE`    | env / `xray.init(sample_rate=...)`    |    float (0..1) |                   `1.0` | Run sampling                 |
+| `XRAY_BATCH_SIZE`     | env / `xray.init(batch_size=...)`     |             int |                    `10` | Flush batch size             |
+| `XRAY_FLUSH_INTERVAL` | env / `xray.init(flush_interval=...)` | float (seconds) |                   `1.0` | Flush cadence                |
+| `XRAY_TOP_K`          | env / `xray.init(top_k=...)`          |             int |                    `10` | Top kept/dropped sample size |
 
 ---
 
