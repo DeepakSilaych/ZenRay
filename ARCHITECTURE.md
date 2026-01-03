@@ -4,44 +4,108 @@
 
 ## 1) System design (overall)
 
-### Diagram
+### Description (flow)
+
+### 1. SDK
+
+#### Diagram
 
 ```mermaid
 flowchart LR
-  subgraph SDK["Python SDK (sdk/)"]
-    A["Decorators + helpers\n(capture run/step decisions)"]
-    B["In-process buffer\n(batch + fail-open)"]
+  subgraph App["Developer code"]
+    P["Pipeline entry"]
+    S1["Step function"]
+    S2["Step function"]
   end
 
-  subgraph Backend["Backend API (server/)"]
-    C["POST /ingest\nfast ack"]
-    D["Redis queue\n(write buffer)"]
-    E["Worker\nflush to storage"]
-    F["Query API\nGET /runs, /steps, ..."]
-    G["Redis cache\n(read cache)"]
+  subgraph SDK["X-Ray Python SDK (sdk/)"]
+    D["Decorators\n(pipeline + step)"]
+    H["Helpers\n(drop/score/metric/artifact/tag)"]
+    Q["Local buffer\n(batch + fail-open)"]
   end
 
-  subgraph Storage["Storage"]
-    P[("PostgreSQL\nruns/steps/artifact index")]
-    S[("MinIO/S3\ncandidate sets + artifact blobs")]
-  end
+  I["Backend\nPOST /ingest"]
 
-  subgraph UI["React UI (client/)"]
-    U["Runs / Run Detail / Step Detail\nCompare / Trace"]
-  end
-
-  A --> B --> C --> D --> E
-  E --> P
-  E --> S
-  U --> F
-  F --> G
-  F --> P
-  F --> S
+  P --> D
+  S1 --> D
+  S2 --> D
+  H --> Q
+  D --> Q --> I
 ```
 
-### Description (para)
+#### Overview (how it’s used)
 
-I treat one pipeline execution as a **Run** and each decision stage as a **Step**. The SDK captures runs/steps and sends events to the backend. The backend acknowledges quickly by queueing ingest into Redis, then a worker persists metadata to Postgres and stores large payloads (candidate sets and artifacts) in MinIO. The UI reads via the query API and the backend uses Redis caching for fast read paths.
+When a developer runs instrumented code, I treat that execution as a **Run** and each decorated stage as a **Step**. Inside steps, the developer can record decision context (drops + reasons, scores, metrics, and artifacts like LLM prompts/responses). The SDK buffers run/step events locally and flushes them in batches to `POST /ingest`, so the pipeline doesn’t pay network cost on every decision.
+
+I designed the SDK to be **fail-open**: if the backend is slow or unavailable, I don’t block the pipeline. I treat observability as best-effort, not as a dependency.
+
+#### SDK “tags” / surface area (what you can use, and why)
+
+| SDK capability                                         | What it is               | Use case (what it gives you)                                                                   |
+| ------------------------------------------------------ | ------------------------ | ---------------------------------------------------------------------------------------------- |
+| `@xray.pipeline("name", ...)`                          | marks a pipeline entry   | creates a Run; you can filter runs by pipeline/version/tags and inspect input/output summaries |
+| `@xray.step("KIND", ...)`                              | marks a decision stage   | creates a Step; enables cross-pipeline queries by kind (FILTER/RETRIEVE/RANK/LLM_CALL/...)     |
+| `xray.drop(candidate, reason)`                         | record a drop decision   | powers `reason_histogram`, `top_dropped`, and drilldowns (why did we lose good candidates?)    |
+| `xray.score(candidate, value)`                         | record a score           | powers `score_histogram`, “top kept”, and debugging “why did this rank high?”                  |
+| `xray.metric(key, value)`                              | structured step metadata | capture thresholds, latencies, model name, retries; useful for filtering and comparison        |
+| `xray.artifact(type, content)`                         | attach a debug payload   | store prompts/responses/config/errors; lets you inspect non-deterministic steps                |
+| `xray.tag(key, value)`                                 | attach run tags          | slice runs by cohort (env, customer, experiment, query); makes “find the bad run” faster       |
+| `xray.set_input_count(n)` / `xray.set_output_count(n)` | manual counts            | use when inputs/outputs are not list-based (single item flows, generators, streaming)          |
+| `xray.init(...)` / env vars                            | configure SDK behavior   | set endpoint, disable tracing, sampling, batching, and top-k capture size                      |
+
+#### SDK configuration knobs (reqs)
+
+| Config                | Where                                 |                 Default | Why you use it                                         |
+| --------------------- | ------------------------------------- | ----------------------: | ------------------------------------------------------ |
+| `XRAY_ENDPOINT`       | env / `xray.init(endpoint=...)`       | `http://localhost:8000` | point SDK at the backend                               |
+| `XRAY_DISABLED`       | env / `xray.init(disabled=...)`       |                 `false` | disable tracing without code changes                   |
+| `XRAY_SAMPLE_RATE`    | env / `xray.init(sample_rate=...)`    |                   `1.0` | control cost by sampling runs                          |
+| `XRAY_BATCH_SIZE`     | env / `xray.init(batch_size=...)`     |                    `10` | reduce HTTP overhead by batching                       |
+| `XRAY_FLUSH_INTERVAL` | env / `xray.init(flush_interval=...)` |                  `1.0s` | control how quickly events appear in UI                |
+| `XRAY_TOP_K`          | env / `xray.init(top_k=...)`          |                    `10` | control how many “top kept/dropped” samples are stored |
+
+#### Key decisions I made (and why)
+
+- **Decorator-first API**: I chose decorators because it’s the lowest-friction way to retrofit an existing pipeline. The developer mostly “marks” functions, instead of threading a context object everywhere.
+- **Run/Step model (not spans)**: I modeled “decision stages” explicitly because the core questions are about candidate decisions and reasoning, not call graphs.
+- **Fail-open + background flush**: I chose best-effort delivery to avoid observability breaking production. Data might be dropped under extreme overload, but the pipeline keeps running.
+- **Batching**: I batch to reduce per-step cost. Many pipelines can emit lots of steps; sending each step synchronously would be too expensive.
+- **Top-k capture**: I store histograms + top samples by default because full candidate capture does not scale. `XRAY_TOP_K` is the main knob to trade off cost vs visibility.
+- **Stable candidate identity**: I assume a stable id field (default `id`). Without stable ids, drops/scores/traces become unreliable.
+
+#### Possible alternatives (and trade-offs)
+
+- **Context managers instead of decorators**: explicit and flexible, but more boilerplate (harder retrofit).
+- **Always capture full candidate lists**: simplest semantics, but becomes unusable at 5k+ candidates (memory, network, storage).
+- **Send synchronously on every step**: easiest to reason about delivery, but increases pipeline latency and fragility.
+- **OpenTelemetry spans**: good for infra tracing, but does not naturally represent candidate-level decisions; you still end up inventing a candidate model.
+
+#### Then: backend + storage (high-level, without internal details)
+
+```mermaid
+flowchart LR
+  SDK["Python SDK"] --> I["POST /ingest"]
+  UI["Web UI"] --> Q["Query API"]
+  I --> DB[("PostgreSQL\n(metadata)")]
+  I --> S3[("MinIO/S3\n(blobs)")]
+  Q --> DB
+  Q --> S3
+```
+
+On the backend, ingest is treated as a fast “accept and persist later” path. The backend ultimately stores **queryable metadata** in Postgres and **large payloads** (candidate sets + artifact bodies) in MinIO. The UI only pulls blobs when a screen needs them (step detail, candidates, artifacts).
+
+#### Finally: web tools + how queryability works
+
+```mermaid
+flowchart LR
+  A["User question:\nWhich FILTER steps dropped > 90%?"] --> B["GET /steps\nkind=FILTER&min_drop_ratio=0.9"]
+  B --> C["Step summaries\n(step_id, run_id, counts)"]
+  C --> D["Open run\nGET /runs/{run_id}"]
+  D --> E["Drill into a step\nGET /steps/{step_id}"]
+  E --> F["Inspect reasons/scores/artifacts\n(candidate set + artifacts)"]
+```
+
+The UI is built around these query patterns: find the suspicious run/step using small indexed fields (kind, counts, status), and only then drill into detailed blobs to answer “why”.
 
 ### Decisions (long bullets)
 
