@@ -2,11 +2,7 @@
 
 ---
 
-## 1) System design (overall)
-
-### Description (flow)
-
-### 1. SDK
+## 1. SDK
 
 #### Diagram
 
