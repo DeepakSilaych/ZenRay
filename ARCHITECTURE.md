@@ -30,26 +30,26 @@ This document explains the architecture and trade-offs in the same structure as 
 
 ```mermaid
 flowchart LR
-  subgraph SDK[Python SDK (sdk/)]
-    A[@pipeline/@step + helpers]
-    B[In-process buffer\n(batch + fail-open)]
+  subgraph SDK["Python SDK (sdk/)"]
+    A["Decorators: pipeline + step, plus helpers"]
+    B["In-process buffer\n(batching + fail-open)"]
   end
 
-  subgraph Backend[FastAPI Backend (server/)]
-    C[POST /ingest]
-    D[Redis queue\n(write buffer)]
-    E[Worker\nflush to storage]
-    F[Query API\nGET /runs,/steps,...]
-    G[Redis cache\n(read cache)]
+  subgraph Backend["FastAPI Backend (server/)"]
+    C["POST /ingest"]
+    D["Redis queue\n(write buffer)"]
+    E["Worker\nflush to storage"]
+    F["Query API\nGET /runs, /steps, ..."]
+    G["Redis cache\n(read cache)"]
   end
 
-  subgraph Storage[Storage]
-    P[(PostgreSQL\nruns/steps/artifact index)]
-    S[(MinIO/S3\ncandidate sets + artifact blobs)]
+  subgraph Storage["Storage"]
+    P[("PostgreSQL\nruns/steps/artifact index")]
+    S[("MinIO/S3\ncandidate sets + artifact blobs")]
   end
 
-  subgraph UI[React UI (client/)]
-    U[Runs / Run Detail / Step Detail\nCompare / Trace]
+  subgraph UI["React UI (client/)"]
+    U["Runs / Run Detail / Step Detail\nCompare / Trace"]
   end
 
   A --> B --> C --> D --> E
@@ -96,7 +96,7 @@ This is why I structured it this way: Postgres gives queryability; object storag
 erDiagram
   RUN ||--o{ STEP : contains
   STEP ||--o{ ARTIFACT_INDEX : indexes
-  STEP ||--o| CANDIDATE_SET_BLOB : references
+  STEP ||--o{ CANDIDATE_SET_BLOB : references
 
   RUN {
     string run_id PK
@@ -105,9 +105,9 @@ erDiagram
     string status
     datetime started_at
     datetime ended_at
-    json tags
-    json input_summary
-    json final_output
+    string tags_json
+    string input_summary_json
+    string final_output_json
   }
 
   STEP {
@@ -122,7 +122,7 @@ erDiagram
     int duration_ms
     datetime started_at
     datetime ended_at
-    json metrics
+    string metrics_json
     string candidate_set_ref
   }
 
@@ -168,16 +168,16 @@ The result is that I can point to the failing stage with evidence, not guesswork
 
 ```mermaid
 flowchart TD
-  A[Bad final output\n(phone case vs laptop stand)] --> B[Open Run Detail]
-  B --> C[Scan step timeline\n(counts, drop ratio, duration)]
+  A["Bad final output\n(phone case vs laptop stand)"] --> B["Open Run Detail"]
+  B --> C["Scan step timeline\n(counts, drop ratio, duration)"]
   C --> D{Which stage looks wrong?}
-  D -->|Retrieve noisy| E[Open RETRIEVE step\ninspect top_kept/top_dropped]
-  D -->|Filter too strict| F[Open FILTER step\nreason_histogram + top_dropped]
-  D -->|Ranking/judge weird| G[Open RANK/JUDGE\nscore_histogram + artifacts]
-  E --> H[Trace candidate\nif needed]
+  D -->|Retrieve noisy| E["Open RETRIEVE step\ninspect top kept/top dropped"]
+  D -->|Filter too strict| F["Open FILTER step\nreason histogram + top dropped"]
+  D -->|Ranking/judge weird| G["Open RANK or JUDGE\nscore histogram + artifacts"]
+  E --> H["Trace candidate\nif needed"]
   F --> H
   G --> H
-  H --> I[Fix logic/prompt/threshold\nre-run and compare]
+  H --> I["Fix logic/prompt/threshold\nre-run and compare"]
 ```
 
 ---
@@ -196,10 +196,10 @@ The constraint I impose is: developers should choose an appropriate `kind` for e
 
 ```mermaid
 flowchart LR
-  A[Question:\n\"Filter eliminated >90%\"] --> B[Query Steps:\nkind=FILTER AND drop_ratio>0.9]
-  B --> C[Return StepSummaries\n(step_id, run_id, counts)]
-  C --> D[Fetch Run Detail\n/runs/{run_id}]
-  D --> E[Inspect candidate set\nand artifacts for that run]
+  A["Question:\nFilter eliminated > 90%"] --> B["Query steps:\nkind=FILTER AND drop_ratio > 0.9"]
+  B --> C["Return step summaries\n(step_id, run_id, counts)"]
+  C --> D["Fetch run detail\nGET /runs/{run_id}"]
+  D --> E["Inspect candidate set\nand artifacts for that run"]
 ```
 
 ---
@@ -220,11 +220,11 @@ I view this as a trade-off: I want safe defaults for production, but I also want
 
 ```mermaid
 flowchart TD
-  A[Step sees N candidates] --> B{How big is N?}
-  B -->|Small| C[TOP_K mode\nstore histograms + top_k samples]
-  B -->|Large| D[SUMMARY mode\nstore counts + histograms + tiny samples]
-  C --> E[Developer can increase XRAY_TOP_K]
-  D --> F[Developer can opt-in\nfor deeper capture during debugging]
+  A["Step sees N candidates"] --> B{"How big is N?"}
+  B -->|Small| C["TOP_K mode\nstore histograms + top-k samples"]
+  B -->|Large| D["SUMMARY mode\nstore counts + histograms + tiny samples"]
+  C --> E["Developer can increase XRAY_TOP_K"]
+  D --> F["Developer can opt-in\nfor deeper capture during debugging"]
 ```
 
 ---
