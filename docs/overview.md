@@ -22,8 +22,6 @@ The SDK emits **run events** and **step events** to the backend ingest endpoint.
 ## Existing design docs
 
 - [`problem_statement.md`](./problem_statement.md)
-- [`PRD.md`](./PRD.md)
-- [`solution.md`](./solution.md)
 
 ## Repository & architecture
 

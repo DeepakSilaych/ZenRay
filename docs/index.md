@@ -8,8 +8,6 @@ Start here. This documentation is organized by **product overview**, **frontend*
 - **Repository structure**: [`repo-structure.md`](./repo-structure.md)
 - **Architecture**: [`architecture.md`](./architecture.md)
 - **Problem statement** (existing): [`problem_statement.md`](./problem_statement.md)
-- **PRD** (existing): [`PRD.md`](./PRD.md)
-- **Solution** (existing): [`solution.md`](./solution.md)
 
 ## Frontend
 
