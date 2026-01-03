@@ -1,4 +1,5 @@
 # X-Ray Architecture
+
 ---
 
 ## 1) System design (overall)
@@ -127,5 +128,3 @@ Then I open that step and inspect the candidate set. I look at `reason_histogram
 Then I use candidate trace (`/runs/{run_id}/trace?q=...`) to see where the laptop stand was dropped and where the phone case was kept. This tells me if the bad candidate was introduced during retrieval or selected later due to ranking/judging.
 
 Finally, for LLM steps I inspect artifacts (prompt/response) and step metrics (model/temperature) to see whether the reasoning stage drifted.
-
-
