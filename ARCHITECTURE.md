@@ -47,7 +47,7 @@ I designed the SDK to be **fail-open**: if the backend is slow or unavailable, I
 | `xray.set_input_count(n)` / `xray.set_output_count(n)` | manual counts            | use when inputs/outputs are not list-based (single item flows, generators, streaming)          |
 | `xray.init(...)` / env vars                            | configure SDK behavior   | set endpoint, disable tracing, sampling, batching, and top-k capture size                      |
 
-#### <u>SDK configuration knobs (reqs)</u>
+#### SDK configuration knobs (reqs)
 
 | Config                | Where                                 |                 Default | Why you use it                                         |
 | --------------------- | ------------------------------------- | ----------------------: | ------------------------------------------------------ |
@@ -100,18 +100,9 @@ flowchart LR
 
 #### Overview
 
-The server has two jobs: (1) accept ingest events from the SDK, and (2) serve query endpoints to the UI. I keep ingest fast by queueing writes, and I keep queries fast by caching and by separating metadata (Postgres) from blobs (MinIO).
-
-#### Why I use blob storage (MinIO/S3)
-
-Candidate sets and artifacts can get large fast. A single step might see thousands of candidates, and LLM prompts/responses can also be big. If I store all that directly in Postgres, I bloat the database with huge JSON, queries slow down, indexes become expensive, and retention becomes harder.
-
-So I split storage:
-
-- **Postgres stores “queryable metadata”**: run/step ids, timestamps, status, step kind, input/output counts, metrics, and an artifact index.
-- **MinIO stores “large payloads (blobs)”**: candidate sets (histograms + top samples + drilldowns) and artifact bodies (prompt/response/config/error content).
-
-This keeps list pages and filters fast (they hit indexed metadata), and it loads blobs only when the user drills into a specific step/artifact.
+The server has two jobs: 
+1. accept ingest events from the SDK, and 
+2. serve query endpoints to the UI. I keep ingest fast by queueing writes, and I keep queries fast by caching and by separating metadata (Postgres) from blobs (MinIO).
 
 ### APIs (table)
 
@@ -137,21 +128,25 @@ I store **candidate sets** and **artifact bodies** as blobs because they can be 
 
 Instead, I keep Postgres for what it’s good at: **small, indexed, queryable metadata** (run/step ids, timestamps, status, kind, counts, metrics, and an artifact index). Then I put the heavy payloads in MinIO/S3 and reference them from the step via a blob ref. This keeps list pages and filters fast (they hit Postgres), and only loads big blobs when a user actually drills into a step detail or artifact view in the UI.
 
-#### Key decisions (and why)
+#### Role of Redis 
 
-- **Queue-based ingest**: I treat ingest as “accept quickly, persist asynchronously” so the SDK does not wait on DB/S3 latency.
-- **Batch processing in the worker**: I persist in batches to amortize overhead and to survive bursty write patterns.
-- **Blob store for large payloads**: candidate sets and artifacts can be large, so I store them in MinIO and keep Postgres focused on queryable fields.
-- **Cache at the query layer**: I cache run lists and run/step detail responses so the UI feels fast even when the DB is under load.
-- **Derived fields on steps**: I store `input_count` and `output_count` on steps to make “drop ratio” queries cheap and cross-pipeline.
+Redis serves two critical functions in this architecture:
 
-#### Possible alternatives (and trade-offs)
+1. **Ingest Queue**: When the SDK or client sends an ingest request (`POST /ingest`), the server quickly validates and pushes the event payload onto a Redis queue. This lets the API respond almost instantly by offloading persistence to a background worker that drains the queue in batches and writes to Postgres/MinIO. Using Redis for this queue guarantees low-latency ingestion and helps absorb bursts of ingest load without overwhelming the DB or blocking clients.
 
-- **Write directly to Postgres in `/ingest`**: simpler, but ingest becomes slow and fragile under spikes.
-- **Put candidate sets in Postgres JSON**: easy to query in one place, but the DB becomes huge and slow as candidate payloads grow.
-- **Use a proper message broker** (Kafka/NATS/Rabbit): better durability/ordering/scaling, but more operational complexity than Redis for this stage.
-- **Skip caching**: simpler correctness story, but UI latency becomes inconsistent and expensive under repeated queries.
+2. **Query Cache**: For frequent query endpoints (like `GET /runs` or step/run details), Redis is used as an in-memory cache layer. Query results are cached with stable keys and invalidated when underlying data changes—typically after a batch write by the ingest worker. This drastically reduces database load and keeps UI interactions snappy even when demand is high.
 
+**Why Redis?**
+Redis is used because it offers a fast, in-memory foundation for both queueing ingest events and caching query results, combining high throughput with operational simplicity. Its support for multiple data structures (lists, sets, hashes) allows efficient handling of both batched writes and fast lookups, while persistence features (AOF/RDB) are adequate for staging transient data—accepting minimal data loss in exchange for reduced complexity. This lets Redis serve simultaneously as a quick ingest buffer and a low-latency cache, ensuring the system stays responsive even under heavy load.
+
+While the current architecture leverages Redis for both ingest queueing and query caching, and MinIO/S3 for large blobs, there are other architectures that could be considered depending on priorities such as durability, operational complexity, and scalability:
+
+Instead of Redis, message brokers like Kafka, NATS, or RabbitMQ can provide stronger guarantees for queue durability, ordering, and throughput at very large scale. They increase operational complexity and require careful management, but are well-suited for environments with very high ingest rates or strict delivery requirements.
+
+Some systems use a dedicated write-ahead log, or even leverage PostgreSQL's LISTEN/NOTIFY or a separate events table as the queue. This simplifies the stack but may cause database contention or reduce ingest throughput during spikes.
+
+
+Ultimately, the chosen architecture reflects a trade-off: Redis and MinIO are lightweight and easy to operate
 ---
 
 ## 3) Dashboard (UI)
@@ -170,13 +165,13 @@ It provides:
 6. **Compare view (same process across runs/pipelines)**: compare multiple runs to spot diffs in step counts, drop ratios, candidate samples, and artifacts.
 
 
-I use the dashboard in two common debugging modes.
+We can use the dashboard in two common debugging modes:
 
 **Case 1: Debug a particular candidate**
 
-If I already know the problematic item (candidate id, title, or name), I open the run and use **Candidate Trace** (`GET /runs/{run_id}/trace?q=...`).
+If we already know the problematic item (candidate id, title, or name), we open the run and use **Candidate Trace** (`GET /runs/{run_id}/trace?q=...`).
 
-I expect the trace to return a step-by-step journey:
+We expect the trace to return a step-by-step journey:
 
 - which steps the candidate appeared in
 - whether it was **kept** or **dropped**
@@ -187,17 +182,17 @@ This is the fastest way to answer: “where did this candidate get eliminated?�
 
 **Case 2: Debug overall results**
 
-If I don’t know a specific candidate and I’m debugging the overall output quality, I start from the run’s **step timeline** and look for anomalies:
+If we don’t know a specific candidate and we’re debugging the overall output quality, we start from the run’s **step timeline** and look for anomalies:
 
 - high **drop ratio** steps (e.g., FILTER dropping 90%+)
 - unexpected **input/output** counts (sudden shrink or explosion)
 - unusually high **duration** steps (often LLM/tool calls)
 
-Then I drill into the suspicious step detail and inspect:
+Then we drill into the suspicious step detail and inspect:
 
 - `reason_histogram` to see dominant elimination rules
 - `score_histogram` to see score distribution issues
 - `top_kept` / `top_dropped` samples to validate decision quality
 - artifacts (prompt/response/config/error) for non-deterministic stages
 
-If this is a regression, I use **Compare** to diff two runs and identify which step’s counts/reasons/samples changed.
+If this is a regression, we use **Compare** to diff two runs and identify which step’s counts/reasons/samples changed.
