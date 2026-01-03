@@ -4,8 +4,6 @@
 
 ## 1. SDK
 
-#### Diagram
-
 ```mermaid
 flowchart LR
   subgraph App["Developer code"]
@@ -30,13 +28,12 @@ flowchart LR
   D --> Q --> I
 ```
 
-#### Overview (how it’s used)
 
 When a developer runs instrumented code, I treat that execution as a **Run** and each decorated stage as a **Step**. Inside steps, the developer can record decision context (drops + reasons, scores, metrics, and artifacts like LLM prompts/responses). The SDK buffers run/step events locally and flushes them in batches to `POST /ingest`, so the pipeline doesn’t pay network cost on every decision.
 
 I designed the SDK to be **fail-open**: if the backend is slow or unavailable, I don’t block the pipeline. I treat observability as best-effort, not as a dependency.
 
-#### SDK Components
+#### <u>SDK Components</u>
 
 | SDK capability                                         | What it is               | Use case (what it gives you)                                                                   |
 | ------------------------------------------------------ | ------------------------ | ---------------------------------------------------------------------------------------------- |
@@ -50,7 +47,7 @@ I designed the SDK to be **fail-open**: if the backend is slow or unavailable, I
 | `xray.set_input_count(n)` / `xray.set_output_count(n)` | manual counts            | use when inputs/outputs are not list-based (single item flows, generators, streaming)          |
 | `xray.init(...)` / env vars                            | configure SDK behavior   | set endpoint, disable tracing, sampling, batching, and top-k capture size                      |
 
-#### SDK configuration knobs (reqs)
+#### <u>SDK configuration knobs (reqs)</u>
 
 | Config                | Where                                 |                 Default | Why you use it                                         |
 | --------------------- | ------------------------------------- | ----------------------: | ------------------------------------------------------ |
@@ -61,7 +58,7 @@ I designed the SDK to be **fail-open**: if the backend is slow or unavailable, I
 | `XRAY_FLUSH_INTERVAL` | env / `xray.init(flush_interval=...)` |                  `1.0s` | control how quickly events appear in UI                |
 | `XRAY_TOP_K`          | env / `xray.init(top_k=...)`          |                    `10` | control how many “top kept/dropped” samples are stored |
 
-#### Key decisions (and why)
+#### <u>Key decisions (and why)</u>
 
 The SDK is designed around a decorator-first integration model because it minimizes retrofit cost for existing codebases. Pipelines can be instrumented by marking entrypoints and stages rather than passing explicit context through every function.
 
@@ -69,7 +66,7 @@ The event model is centered on Run and Step because the debugging questions are 
 
 Delivery is fail open and batch oriented. Events are buffered and flushed asynchronously so the pipeline does not pay network cost on every decision and does not fail when the backend is unavailable. Candidate capture defaults to summarized outputs with a configurable top k limit so visibility is preserved without storing full candidate lists. Candidate identity is expected to be stable, usually the `id` field, so drops, scores, and trace remain consistent.
 
-#### Possible alternatives (and trade-offs)
+#### <u>Possible alternatives (and trade-offs)</u>
 
 Context managers can replace decorators and provide explicit scoping, but they typically add more boilerplate and reduce adoption for existing pipelines.
 
@@ -131,7 +128,6 @@ This keeps list pages and filters fast (they hit indexed metadata), and it loads
 | GET    | `/compare`                    | Compare two runs                        | Query: `run_id_a`, `run_id_b`                                                      | comparison payload (runs + step diffs)                           |
 | GET    | `/health`                     | Health check                            | —                                                                                  | `{ status, version, queue_length }`                              |
 
-### How things work (para)
 
 On ingest, I do not write to the database inline. I enqueue the payload to Redis and return, so ingest stays low-latency. A background worker drains the queue in batches, writes run/step metadata to Postgres, writes candidate sets and artifact payloads to MinIO, and invalidates caches. On queries, I check Redis cache first; on a miss I query Postgres, and if blob-backed content is required (candidate sets, artifact content) I load it from MinIO.
 
@@ -173,7 +169,6 @@ It provides:
 5. **Candidate trace**: search a candidate id/name/title inside a run to see its journey (kept vs dropped) and the drop reason when applicable.
 6. **Compare view (same process across runs/pipelines)**: compare multiple runs to spot diffs in step counts, drop ratios, candidate samples, and artifacts.
 
-#### How I use it for debugging
 
 I use the dashboard in two common debugging modes.
 
