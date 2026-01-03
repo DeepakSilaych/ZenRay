@@ -5,7 +5,7 @@ from contextlib import contextmanager
 
 from xray.models import RunData, RunStatus
 from xray.client import get_client
-from xray.step import Step
+from xray.step_legacy import Step
 
 class Run:
     """Context manager for instrumenting a pipeline run."""

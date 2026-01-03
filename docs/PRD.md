@@ -1,3 +1,10 @@
+# Navigation
+
+- Back to docs index: [`index.md`](./index.md)
+- Overview: [`overview.md`](./overview.md)
+- Repo structure: [`repo-structure.md`](./repo-structure.md)
+- Architecture: [`architecture.md`](./architecture.md)
+
 Below is a solid **PRD** for an **X-Ray Observability SDK + Backend** that helps teams *pinpoint why* multi-step, non-deterministic pipelines produced bad outputs (LLM + retrieval + filters + ranking).
 
 ---

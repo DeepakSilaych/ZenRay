@@ -36,6 +36,10 @@ class ArtifactType(str, Enum):
     CONFIG = "config"
     INPUT = "input"
     OUTPUT = "output"
+    JUDGMENTS = "judgments"
+    METADATA = "metadata"
+    ERROR = "error"
+    DEBUG = "debug"
 
 class CandidateSetData(BaseModel):
     mode: CaptureMode = CaptureMode.SUMMARY
@@ -45,6 +49,7 @@ class CandidateSetData(BaseModel):
     score_histogram: Optional[dict[str, int]] = None
     top_kept: Optional[list[dict[str, Any]]] = None
     top_dropped: Optional[list[dict[str, Any]]] = None
+    dropped_by_reason: Optional[dict[str, list[dict[str, Any]]]] = None  # reason -> candidates
     full_candidates: Optional[list[dict[str, Any]]] = None
 
 class ArtifactData(BaseModel):

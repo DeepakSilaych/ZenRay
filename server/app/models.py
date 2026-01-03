@@ -38,6 +38,10 @@ class ArtifactType(str, Enum):
     CONFIG = "config"
     INPUT = "input"
     OUTPUT = "output"
+    JUDGMENTS = "judgments"
+    METADATA = "metadata"
+    ERROR = "error"
+    DEBUG = "debug"
 
 # --- Core Models ---
 
@@ -49,6 +53,7 @@ class CandidateSet(BaseModel):
     score_histogram: Optional[dict[str, int]] = None   # bucket -> count
     top_kept: Optional[list[dict[str, Any]]] = None
     top_dropped: Optional[list[dict[str, Any]]] = None
+    dropped_by_reason: Optional[dict[str, list[dict[str, Any]]]] = None  # reason -> candidates
     full_candidates: Optional[list[dict[str, Any]]] = None  # only for FULL mode
 
 class Artifact(BaseModel):

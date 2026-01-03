@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { fetchRunDetail, RunDetail, StepSummary } from '../api'
+import { fetchRunDetail, RunDetail, StepSummary, traceCandidate, CandidateTraceResult } from '../api'
 
 export default function RunDetailPage() {
   const { runId } = useParams<{ runId: string }>()
@@ -82,6 +82,9 @@ export default function RunDetailPage() {
         </div>
       </div>
 
+      {/* Candidate Trace */}
+      <CandidateTrace runId={run.run_id} />
+
       {/* Steps Table */}
       <div>
         <h2 className="text-sm font-medium text-xray-muted mb-3">Step Timeline</h2>
@@ -114,7 +117,7 @@ export default function RunDetailPage() {
           {run.input_summary && (
             <div>
               <h2 className="text-sm font-medium text-xray-muted mb-3">Input</h2>
-              <pre className="bg-xray-surface border border-xray-border rounded-lg p-4 text-xs font-mono overflow-x-auto">
+              <pre className="bg-xray-surface border border-xray-border rounded-lg p-4 text-xs font-mono overflow-auto max-h-64">
                 {JSON.stringify(run.input_summary, null, 2)}
               </pre>
             </div>
@@ -122,13 +125,150 @@ export default function RunDetailPage() {
           {run.final_output && (
             <div>
               <h2 className="text-sm font-medium text-xray-muted mb-3">Output</h2>
-              <pre className="bg-xray-surface border border-xray-border rounded-lg p-4 text-xs font-mono overflow-x-auto">
+              <pre className="bg-xray-surface border border-xray-border rounded-lg p-4 text-xs font-mono overflow-auto max-h-64">
                 {JSON.stringify(run.final_output, null, 2)}
               </pre>
             </div>
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+function CandidateTrace({ runId }: { runId: string }) {
+  const [query, setQuery] = useState('')
+  const [result, setResult] = useState<CandidateTraceResult | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [searched, setSearched] = useState(false)
+
+  const handleSearch = async () => {
+    if (!query.trim()) return
+    setLoading(true)
+    setSearched(true)
+    try {
+      const res = await traceCandidate(runId, query.trim())
+      setResult(res)
+    } catch {
+      setResult(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleSearch()
+  }
+
+  return (
+    <div className="bg-xray-surface border border-xray-border rounded-lg">
+      <div className="px-4 py-3 border-b border-xray-border">
+        <h3 className="text-xs font-medium text-xray-muted uppercase tracking-wider">Trace Candidate</h3>
+      </div>
+      <div className="p-4">
+        <div className="flex gap-3">
+          <input
+            type="text"
+            placeholder="Search by ID, name, or title..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="flex-1 h-9 px-3 bg-xray-bg border border-xray-border rounded text-sm
+                       placeholder:text-xray-dim focus:outline-none focus:border-xray-accent
+                       transition-colors"
+          />
+          <button
+            onClick={handleSearch}
+            disabled={loading || !query.trim()}
+            className="h-9 px-4 bg-xray-accent text-xray-bg rounded text-sm font-medium
+                       hover:bg-xray-accentHover disabled:opacity-50 disabled:cursor-not-allowed
+                       transition-colors"
+          >
+            {loading ? 'Searching...' : 'Trace'}
+          </button>
+        </div>
+
+        {searched && result && (
+          <div className="mt-4">
+            {!result.found ? (
+              <div className="text-sm text-xray-muted py-4 text-center">
+                No candidate matching "{result.query}" found in any step
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="text-sm text-xray-muted">
+                  Found "{result.query}" in {result.journey.length} step(s)
+                </div>
+                <div className="border border-xray-border rounded overflow-hidden">
+                  <table>
+                    <thead>
+                      <tr className="border-b border-xray-border bg-xray-bg">
+                        <th className="px-4 py-2 w-8"></th>
+                        <th className="px-4 py-2">Step</th>
+                        <th className="px-4 py-2">Kind</th>
+                        <th className="px-4 py-2">Result</th>
+                        <th className="px-4 py-2">Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-xray-border">
+                      {result.journey.map((j, idx) => (
+                        <tr key={j.step_id} className="hover:bg-xray-elevated/30">
+                          <td className="px-4 py-2 text-xray-dim font-mono text-xs">{idx + 1}</td>
+                          <td className="px-4 py-2">
+                            <Link 
+                              to={`/steps/${j.step_id}`} 
+                              className="text-xray-accent hover:underline"
+                            >
+                              {j.step_name}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-2">
+                            <span className="px-2 py-0.5 bg-xray-elevated rounded text-2xs font-mono text-xray-muted">
+                              {j.step_kind}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2">
+                            {j.status === 'kept' ? (
+                              <span className="inline-flex items-center gap-1.5 text-xray-success text-sm">
+                                <span className="w-2 h-2 bg-xray-success rounded-full"></span>
+                                Kept
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 text-xray-danger text-sm">
+                                <span className="w-2 h-2 bg-xray-danger rounded-full"></span>
+                                Dropped
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2 font-mono text-xs text-xray-muted">
+                            {j.drop_reason || '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Show candidate details */}
+                {result.journey.length > 0 && result.journey[0].candidate && (
+                  <div className="mt-3">
+                    <div className="text-xs text-xray-muted mb-2">Candidate Data</div>
+                    <pre className="bg-xray-bg border border-xray-border rounded p-3 text-xs font-mono overflow-auto max-h-48">
+                      {JSON.stringify(result.journey[0].candidate, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {!searched && (
+          <div className="text-xs text-xray-dim mt-3">
+            Search for a candidate to see which steps it passed through and where it was dropped.
+          </div>
+        )}
+      </div>
     </div>
   )
 }

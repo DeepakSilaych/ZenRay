@@ -1,79 +1,139 @@
 import json
-from pathlib import Path
 from typing import Any, Optional
+from contextlib import asynccontextmanager
 
-BLOB_DIR = Path("data/blobs")
+import aioboto3
+from botocore.config import Config
+
+from app.config import get_settings
+
+_session: Optional[aioboto3.Session] = None
+
 
 def init_blob_store():
-    BLOB_DIR.mkdir(parents=True, exist_ok=True)
+    """Initialize the S3/MinIO session."""
+    global _session
+    _session = aioboto3.Session()
 
-def _blob_path(blob_id: str) -> Path:
-    # Use first 2 chars as subdirectory for better filesystem performance
-    subdir = blob_id[:2] if len(blob_id) >= 2 else "00"
-    return BLOB_DIR / subdir / f"{blob_id}.json"
 
-def save_blob(blob_id: str, data: Any) -> str:
-    """Save data to blob store, returns the blob path."""
-    path = _blob_path(blob_id)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, default=str))
-    return str(path)
+def get_session() -> aioboto3.Session:
+    if _session is None:
+        raise RuntimeError("Blob store not initialized")
+    return _session
 
-def load_blob(blob_id: str) -> Optional[Any]:
-    """Load data from blob store."""
-    path = _blob_path(blob_id)
-    if not path.exists():
+
+@asynccontextmanager
+async def get_s3_client():
+    """Get an async S3 client configured for MinIO."""
+    settings = get_settings()
+    session = get_session()
+    
+    async with session.client(
+        's3',
+        endpoint_url=settings.s3_endpoint,
+        aws_access_key_id=settings.s3_access_key,
+        aws_secret_access_key=settings.s3_secret_key,
+        region_name=settings.s3_region,
+        config=Config(signature_version='s3v4'),
+    ) as client:
+        yield client
+
+
+def _blob_key(blob_id: str) -> str:
+    """Generate S3 key with prefix for better partitioning."""
+    prefix = blob_id[:2] if len(blob_id) >= 2 else "00"
+    return f"{prefix}/{blob_id}.json"
+
+
+async def save_blob(blob_id: str, data: Any) -> str:
+    """Save data to S3/MinIO, returns the blob key."""
+    settings = get_settings()
+    key = _blob_key(blob_id)
+    body = json.dumps(data, default=str)
+    
+    async with get_s3_client() as s3:
+        await s3.put_object(
+            Bucket=settings.s3_bucket,
+            Key=key,
+            Body=body.encode('utf-8'),
+            ContentType='application/json',
+        )
+    
+    return key
+
+
+async def load_blob(blob_id: str) -> Optional[Any]:
+    """Load data from S3/MinIO."""
+    settings = get_settings()
+    key = _blob_key(blob_id)
+    
+    try:
+        async with get_s3_client() as s3:
+            response = await s3.get_object(
+                Bucket=settings.s3_bucket,
+                Key=key,
+            )
+            body = await response['Body'].read()
+            return json.loads(body.decode('utf-8'))
+    except Exception:
         return None
-    return json.loads(path.read_text())
 
-def delete_blob(blob_id: str) -> bool:
-    """Delete blob, returns True if deleted."""
-    path = _blob_path(blob_id)
-    if path.exists():
-        path.unlink()
+
+async def delete_blob(blob_id: str) -> bool:
+    """Delete blob from S3/MinIO."""
+    settings = get_settings()
+    key = _blob_key(blob_id)
+    
+    try:
+        async with get_s3_client() as s3:
+            await s3.delete_object(
+                Bucket=settings.s3_bucket,
+                Key=key,
+            )
         return True
-    return False
+    except Exception:
+        return False
 
-def blob_exists(blob_id: str) -> bool:
-    return _blob_path(blob_id).exists()
+
+async def blob_exists(blob_id: str) -> bool:
+    """Check if blob exists in S3/MinIO."""
+    settings = get_settings()
+    key = _blob_key(blob_id)
+    
+    try:
+        async with get_s3_client() as s3:
+            await s3.head_object(
+                Bucket=settings.s3_bucket,
+                Key=key,
+            )
+        return True
+    except Exception:
+        return False
+
 
 # --- Candidate Set helpers ---
 
-def save_candidate_set(step_id: str, candidate_set: dict) -> str:
+async def save_candidate_set(step_id: str, candidate_set: dict) -> str:
     """Save candidate set, returns blob reference."""
     blob_id = f"cs_{step_id}"
-    return save_blob(blob_id, candidate_set)
+    return await save_blob(blob_id, candidate_set)
 
-def load_candidate_set(step_id: str) -> Optional[dict]:
+
+async def load_candidate_set(step_id: str) -> Optional[dict]:
     """Load candidate set for a step."""
     blob_id = f"cs_{step_id}"
-    return load_blob(blob_id)
+    return await load_blob(blob_id)
+
 
 # --- Artifact helpers ---
 
-def save_artifact(artifact_id: str, content: Any) -> str:
+async def save_artifact(artifact_id: str, content: Any) -> str:
     """Save artifact, returns blob reference."""
     blob_id = f"art_{artifact_id}"
-    return save_blob(blob_id, content)
+    return await save_blob(blob_id, content)
 
-def load_artifact(artifact_id: str) -> Optional[Any]:
+
+async def load_artifact(artifact_id: str) -> Optional[Any]:
     """Load artifact content."""
     blob_id = f"art_{artifact_id}"
-    return load_blob(blob_id)
-
-def list_artifacts_for_step(step_id: str) -> list[dict]:
-    """List all artifacts for a step (by scanning blob store)."""
-    # This is a simple implementation; in production you'd use an index
-    artifacts = []
-    prefix = f"art_{step_id}_"
-    for subdir in BLOB_DIR.iterdir():
-        if subdir.is_dir():
-            for blob_file in subdir.glob("*.json"):
-                if blob_file.stem.startswith(prefix):
-                    artifact_id = blob_file.stem.replace("art_", "")
-                    artifacts.append({
-                        "artifact_id": artifact_id,
-                        "blob_path": str(blob_file),
-                    })
-    return artifacts
-
+    return await load_blob(blob_id)

@@ -5,6 +5,8 @@ import App from './App'
 import RunsPage from './pages/RunsPage'
 import RunDetailPage from './pages/RunDetailPage'
 import StepDetailPage from './pages/StepDetailPage'
+import ComparePage from './pages/ComparePage'
+import DocsPage from './pages/DocsPage'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -15,6 +17,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route index element={<RunsPage />} />
           <Route path="runs/:runId" element={<RunDetailPage />} />
           <Route path="steps/:stepId" element={<StepDetailPage />} />
+          <Route path="compare" element={<ComparePage />} />
+          <Route path="docs" element={<DocsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

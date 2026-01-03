@@ -1,3 +1,10 @@
+# Navigation
+
+- Back to docs index: [`index.md`](./index.md)
+- Overview: [`overview.md`](./overview.md)
+- Repo structure: [`repo-structure.md`](./repo-structure.md)
+- Architecture: [`architecture.md`](./architecture.md)
+
 Below is an **ARCHITECTURE.md-style** architecture for an **X-Ray SDK + API** that explains *why* a multi-step, non-deterministic pipeline produced an output (not just what happened). This is tailored to the take-home brief: capture step inputs/candidates/filters/outcomes/reasoning  and support debugging cases like “phone case matched to laptop stand” , plus queryability (“filter eliminated >90%”)  and scale concerns (5,000 → 30) .
 
 ---

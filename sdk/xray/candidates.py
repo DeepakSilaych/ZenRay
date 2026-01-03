@@ -11,17 +11,18 @@ class CandidateSet:
     
     # Thresholds for automatic mode selection
     SUMMARY_THRESHOLD = 100  # Use SUMMARY mode if candidates > this
-    TOP_K_DEFAULT = 10
     
     def __init__(
         self,
         step: "Step",
         mode: Optional[CaptureMode] = None,
-        top_k: int = TOP_K_DEFAULT,
+        top_k: Optional[int] = None,
     ):
+        from xray.config import get_config
+        
         self._step = step
         self._mode = mode
-        self._top_k = top_k
+        self._top_k = top_k if top_k is not None else get_config().top_k
         
         self._input_candidates: list[dict[str, Any]] = []
         self._output_candidates: list[dict[str, Any]] = []
@@ -89,10 +90,12 @@ class CandidateSet:
         elif mode == CaptureMode.TOP_K:
             data.top_kept = self._output_candidates[:self._top_k]
             data.top_dropped = self._get_top_dropped(self._top_k)
+            data.dropped_by_reason = self._get_dropped_by_reason()
         
         elif mode == CaptureMode.FULL:
             data.full_candidates = self._input_candidates
             data.top_kept = self._output_candidates
+            data.dropped_by_reason = self._get_dropped_by_reason()
         
         return data
     
@@ -133,4 +136,20 @@ class CandidateSet:
             dropped.sort(key=lambda c: self._scores.get(c.get("id", ""), 0), reverse=True)
         
         return dropped[:k]
+    
+    def _get_dropped_by_reason(self) -> Optional[dict[str, list[dict[str, Any]]]]:
+        """Group dropped candidates by their drop reason."""
+        if not self._drop_reasons:
+            return None
+        
+        output_ids = {c.get("id") for c in self._output_candidates}
+        result: dict[str, list[dict[str, Any]]] = {}
+        
+        for c in self._input_candidates:
+            cid = c.get("id")
+            if cid not in output_ids and cid in self._drop_reasons:
+                reason = self._drop_reasons[cid]
+                result.setdefault(reason, []).append(c)
+        
+        return result if result else None
 

@@ -16,6 +16,12 @@ export default function App() {
               <NavLink to="/" current={location.pathname === '/'}>
                 Runs
               </NavLink>
+              <NavLink to="/compare" current={location.pathname === '/compare'}>
+                Compare
+              </NavLink>
+              <NavLink to="/docs" current={location.pathname === '/docs'}>
+                Docs
+              </NavLink>
             </nav>
           </div>
           <div className="text-xs text-xray-dim">
