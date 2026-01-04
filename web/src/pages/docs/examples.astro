@@ -1,81 +1,46 @@
 ---
-import DocsLayout from '../../layouts/DocsLayout.astro'
----
+import DocsLayout from "../../layouts/DocsLayout.astro";
 
-<DocsLayout title="Examples" description="Real-world examples of X-Ray instrumentation.">
+const ragExample = `import xray
 
-<h2>E-commerce Search</h2>
-
-<pre><code>import xray
-
-@xray.pipeline("product-search")
-def search_products(query: str, user_id: str):
-    xray.tag("user_id", user_id)
-    
-    candidates = retrieve(query)
-    scored = score(candidates, query)
-    filtered = filter_availability(scored)
-    personalized = personalize(filtered, user_id)
-    
-    return personalized[:10]
-
-@xray.step("RETRIEVE")
-def retrieve(query: str):
-    xray.metric("index", "products-v2")
-    results = vector_search(query, limit=1000)
-    return results
-
-@xray.step("RANK")
-def score(items, query):
-    for item in items:
-        relevance = compute_score(item, query)
-        xray.score(item, relevance)
-        item.score = relevance
-    return sorted(items, key=lambda x: x.score, reverse=True)
-
-@xray.step("FILTER")
-def filter_availability(items):
-    for item in items:
-        if not item.in_stock:
-            xray.drop(item, "out_of_stock")
-            continue
-        if item.price > 1000:
-            xray.drop(item, "price_too_high")
-            continue
-        yield item
-</code></pre>
-
-<h2>RAG Document Retrieval</h2>
-
-<pre><code>import xray
+xray.init(api_key="your-api-key")
 
 @xray.pipeline("rag-retrieval")
 def answer_question(question: str):
+    xray.tag("question_length", len(question))
+    
     docs = retrieve_docs(question)
     relevant = filter_relevance(docs, question)
     answer = generate_answer(question, relevant)
+    
     return answer
 
 @xray.step("RETRIEVE")
 def retrieve_docs(question: str):
     embedding = embed(question)
-    xray.metric("model", "text-embedding-3-small")
-    return vector_db.search(embedding, limit=100)
+    xray.metric("embedding_model", "text-embedding-3-small")
+    
+    results = vector_db.search(embedding, limit=100)
+    return results
 
 @xray.step("FILTER")
 def filter_relevance(docs, question):
     for doc in docs:
         score = cross_encoder.score(question, doc.text)
         xray.score(doc, score)
+        
         if score < 0.3:
             xray.drop(doc, "low_relevance")
+            continue
+        if doc.is_outdated:
+            xray.drop(doc, "outdated_content")
             continue
         yield doc
 
 @xray.step("LLM_CALL")
 def generate_answer(question: str, docs: list):
-    context = "\n".join([d.text for d in docs])
-    prompt = f"Answer based on context:\n{context}\n\nQ: {question}"
+    context = "\\n".join([d.text for d in docs])
+    prompt = f"Context:\\n{context}\\n\\nQuestion: {question}"
     
     xray.artifact("prompt", prompt)
     xray.metric("context_docs", len(docs))
@@ -87,43 +52,373 @@ def generate_answer(question: str, docs: list):
     
     answer = response.choices[0].message.content
     xray.artifact("response", answer)
-    xray.metric("tokens", response.usage.total_tokens)
     
-    return answer
-</code></pre>
+    return answer`;
 
-<h2>Content Moderation</h2>
+const searchExample = `import xray
 
-<pre><code>import xray
+@xray.pipeline("product-search")
+def search_products(query: str, user_id: str):
+    xray.tag("user_id", user_id)
+    xray.tag("query", query)
+    
+    candidates = retrieve(query)
+    scored = rank(candidates, query)
+    filtered = apply_filters(scored)
+    personalized = personalize(filtered, user_id)
+    
+    return personalized[:10]
+
+@xray.step("RETRIEVE")
+def retrieve(query: str):
+    xray.metric("index", "products-v2")
+    results = elasticsearch.search(query, limit=1000)
+    return results
+
+@xray.step("RANK")
+def rank(items, query):
+    for item in items:
+        relevance = ranking_model.predict(item, query)
+        xray.score(item, relevance)
+        item.score = relevance
+    return sorted(items, key=lambda x: x.score, reverse=True)
+
+@xray.step("FILTER")
+def apply_filters(items):
+    for item in items:
+        if not item.in_stock:
+            xray.drop(item, "out_of_stock")
+            continue
+        if item.is_restricted:
+            xray.drop(item, "geo_restricted")
+            continue
+        if item.score < 0.1:
+            xray.drop(item, "below_threshold")
+            continue
+        yield item`;
+
+const agentExample = `import xray
+
+@xray.pipeline("customer-support-agent")
+def handle_request(user_message: str):
+    xray.tag("message_type", classify_intent(user_message))
+    
+    # Select appropriate tools
+    tools = select_tools(user_message)
+    
+    # Execute tools until we have an answer
+    for tool in tools:
+        result = execute_tool(tool, user_message)
+        if result.is_complete:
+            return format_response(result)
+    
+    return fallback_response()
+
+@xray.step("SELECT")
+def select_tools(message: str):
+    all_tools = get_available_tools()
+    
+    for tool in all_tools:
+        relevance = tool.compute_relevance(message)
+        xray.score(tool, relevance)
+        
+        if relevance < 0.3:
+            xray.drop(tool, "low_relevance")
+            continue
+        if not tool.is_available():
+            xray.drop(tool, "service_unavailable")
+            continue
+        yield tool
+
+@xray.step("TOOL_CALL")
+def execute_tool(tool, message: str):
+    xray.metric("tool_name", tool.name)
+    xray.artifact("tool_input", {"message": message})
+    
+    result = tool.execute(message)
+    
+    xray.artifact("tool_output", result.to_dict())
+    xray.metric("execution_time_ms", result.duration_ms)
+    
+    return result`;
+
+const moderationExample = `import xray
 
 @xray.pipeline("content-moderation")
-def moderate(content: str):
-    xray.tag("content_type", "user_post")
+def moderate_content(content: str, content_type: str):
+    xray.tag("content_type", content_type)
+    xray.tag("content_length", len(content))
     
+    # Run through all moderation checks
     if check_blocklist(content):
-        return {"allowed": False, "reason": "blocklist"}
+        return {"allowed": False, "reason": "blocklist_match"}
     
     toxicity = check_toxicity(content)
     if toxicity > 0.8:
-        return {"allowed": False, "reason": "toxic"}
+        return {"allowed": False, "reason": "high_toxicity"}
     
     return {"allowed": True}
 
 @xray.step("FILTER")
 def check_blocklist(content: str):
+    content_lower = content.lower()
+    
     for word in BLOCKLIST:
-        if word in content.lower():
-            xray.drop({"content": content}, f"blocklist:{word}")
+        if word in content_lower:
+            xray.drop({"content": content[:100]}, f"blocklist:{word}")
             return True
     return False
 
 @xray.step("LLM_CALL")
 def check_toxicity(content: str):
     xray.artifact("input", content)
-    score = toxicity_model.predict(content)
-    xray.metric("toxicity_score", score)
-    return score
-</code></pre>
+    
+    result = toxicity_model.predict(content)
+    
+    xray.metric("toxicity_score", result.score)
+    xray.metric("categories", result.flagged_categories)
+    
+    return result.score`;
+---
+
+<DocsLayout title="Examples" description="Real-world examples showing how to instrument common ML pipeline patterns.">
+
+<h2>Use Cases</h2>
+
+<details class="doc-section" open>
+  <summary>
+    <span class="section-icon rag">1</span>
+    <span class="section-title">RAG Document Retrieval</span>
+    <span class="section-desc">Retrieval + LLM</span>
+  </summary>
+  <div class="section-content">
+    <p>A typical RAG pipeline that retrieves documents, filters by relevance, and generates an answer. X-Ray tracks which documents made it to the LLM context.</p>
+    
+    <h4>What to debug</h4>
+    <ul class="feature-list">
+      <li>Which documents were retrieved but filtered out</li>
+      <li>Relevance scores and drop reasons</li>
+      <li>Prompts sent to the LLM and responses</li>
+    </ul>
+    
+    <h4>Code</h4>
+    <pre><code>{ragExample}</code></pre>
+  </div>
+</details>
+
+<details class="doc-section">
+  <summary>
+    <span class="section-icon search">2</span>
+    <span class="section-title">E-commerce Product Search</span>
+    <span class="section-desc">Multi-stage ranking</span>
+  </summary>
+  <div class="section-content">
+    <p>A multi-stage search pipeline with retrieval, ranking, filtering, and personalization. Track why products don't appear in results.</p>
+    
+    <h4>What to debug</h4>
+    <ul class="feature-list">
+      <li>Products filtered due to stock or geo restrictions</li>
+      <li>Ranking scores and how they affect final order</li>
+      <li>User personalization impact</li>
+    </ul>
+    
+    <h4>Code</h4>
+    <pre><code>{searchExample}</code></pre>
+  </div>
+</details>
+
+<details class="doc-section">
+  <summary>
+    <span class="section-icon agent">3</span>
+    <span class="section-title">AI Agent Tool Selection</span>
+    <span class="section-desc">Tool routing</span>
+  </summary>
+  <div class="section-content">
+    <p>An agent that selects and executes tools. X-Ray tracks which tools were considered and why some were rejected.</p>
+    
+    <h4>What to debug</h4>
+    <ul class="feature-list">
+      <li>Tool relevance scores for each request</li>
+      <li>Why certain tools were not selected</li>
+      <li>Tool inputs, outputs, and execution times</li>
+    </ul>
+    
+    <h4>Code</h4>
+    <pre><code>{agentExample}</code></pre>
+  </div>
+</details>
+
+<details class="doc-section">
+  <summary>
+    <span class="section-icon mod">4</span>
+    <span class="section-title">Content Moderation</span>
+    <span class="section-desc">Safety filters</span>
+  </summary>
+  <div class="section-content">
+    <p>A moderation pipeline that checks content against multiple filters. Track why content is flagged or allowed.</p>
+    
+    <h4>What to debug</h4>
+    <ul class="feature-list">
+      <li>Which blocklist words triggered flags</li>
+      <li>Toxicity scores from the model</li>
+      <li>False positives and negatives</li>
+    </ul>
+    
+    <h4>Code</h4>
+    <pre><code>{moderationExample}</code></pre>
+  </div>
+</details>
 
 </DocsLayout>
 
+<style>
+  .doc-section {
+    margin-bottom: 0.75rem;
+    border: 1px solid #27272a;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    background: #18181b;
+  }
+  
+  .doc-section summary {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    background: #18181b;
+    transition: background 0.15s;
+    list-style: none;
+  }
+  
+  .doc-section summary::-webkit-details-marker {
+    display: none;
+  }
+  
+  .doc-section summary::before {
+    content: "▶";
+    font-size: 0.625rem;
+    color: #71717a;
+    transition: transform 0.15s;
+  }
+  
+  .doc-section[open] summary::before {
+    transform: rotate(90deg);
+  }
+  
+  .doc-section summary:hover {
+    background: #27272a;
+  }
+  
+  .doc-section .section-icon {
+    font-size: 0.75rem;
+    font-weight: 700;
+    width: 1.75rem;
+    height: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  
+  .doc-section .section-icon.rag {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+  }
+  
+  .doc-section .section-icon.search {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+  }
+  
+  .doc-section .section-icon.agent {
+    background: rgba(168, 85, 247, 0.2);
+    color: #c084fc;
+  }
+  
+  .doc-section .section-icon.mod {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+  }
+  
+  .doc-section .section-title {
+    font-size: 0.9375rem;
+    color: white;
+    font-weight: 600;
+  }
+  
+  .doc-section .section-desc {
+    color: #71717a;
+    font-size: 0.875rem;
+    margin-left: auto;
+  }
+  
+  .section-content {
+    padding: 1.25rem;
+    border-top: 1px solid #27272a;
+    background: #09090b;
+  }
+  
+  .section-content h4 {
+    color: #a1a1aa;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .section-content h4:first-child {
+    margin-top: 0;
+  }
+  
+  .section-content p {
+    color: #a1a1aa;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+  
+  .section-content pre {
+    background: #18181b;
+    border: 1px solid #27272a;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    overflow-x: auto;
+    margin-bottom: 0;
+  }
+  
+  .section-content code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8125rem;
+    color: #e4e4e7;
+    white-space: pre;
+  }
+  
+  .feature-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1rem 0;
+  }
+  
+  .feature-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    padding: 0.5rem 0;
+    color: #a1a1aa;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+  
+  .feature-list li::before {
+    content: "";
+    flex-shrink: 0;
+    width: 6px;
+    height: 6px;
+    margin-top: 0.5rem;
+    border-radius: 50%;
+    background: #3b82f6;
+  }
+</style>

@@ -1,20 +1,11 @@
 ---
-import DocsLayout from '../../layouts/DocsLayout.astro'
----
+import DocsLayout from "../../layouts/DocsLayout.astro";
+import { config } from "../../config";
 
-<DocsLayout title="Getting Started" description="Add X-Ray to your ML pipeline in 5 minutes.">
+const quickStartExample = `import xray
 
-<h2>Installation</h2>
-
-<pre><code>pip install xray-sdk</code></pre>
-
-<h2>Quick Start</h2>
-
-<p>Wrap your pipeline function with <code>@xray.pipeline</code> and each step with <code>@xray.step</code>:</p>
-
-<pre><code>import xray
-
-xray.init(endpoint="http://localhost:8000")
+# Connect to X-Ray (get your API key from the dashboard)
+xray.init(endpoint="https://api.xray.dev", api_key="your-api-key")
 
 @xray.pipeline("my-pipeline")
 def process(query: str):
@@ -24,61 +15,281 @@ def process(query: str):
 
 @xray.step("RETRIEVE")
 def retrieve(query: str):
-    # Your retrieval logic
-    return results
+    # Your retrieval logic here
+    return vector_db.search(query, limit=100)
+
+@xray.step("RANK")
+def rank(items):
+    for item in items:
+        score = model.predict(item)
+        xray.score(item, score)  # Track scores
+        item.score = score
+    return sorted(items, reverse=True)
 
 @xray.step("FILTER")
 def filter(items):
     for item in items:
         if item.score < 0.5:
-            xray.drop(item, "low_score")
+            xray.drop(item, "low_score")  # Track why items are dropped
             continue
-        yield item
-</code></pre>
+        yield item`;
+
+const dashboardSteps = `# 1. Sign up at xray.dev
+# 2. Create a new project
+# 3. Copy your API key
+# 4. Add to your code:
+xray.init(api_key="your-api-key")`;
+---
+
+<DocsLayout title="Getting Started" description="Add X-Ray to your ML pipeline in under 5 minutes.">
+
+<div class="info-box">
+  <p><strong>New to X-Ray?</strong> This guide walks you through installing the SDK and instrumenting your first pipeline.</p>
+</div>
+
+<h2>Setup</h2>
+
+<details class="doc-section" open>
+  <summary>
+    <span class="section-icon">1</span>
+    <span class="section-title">Install the SDK</span>
+    <span class="section-desc">pip install</span>
+  </summary>
+  <div class="section-content">
+    <p>Install the X-Ray SDK using pip:</p>
+    <pre><code>pip install xray-sdk</code></pre>
+  </div>
+</details>
+
+<details class="doc-section">
+  <summary>
+    <span class="section-icon">2</span>
+    <span class="section-title">Instrument Your Pipeline</span>
+    <span class="section-desc">Add decorators</span>
+  </summary>
+  <div class="section-content">
+    <p>Add two decorators: <code>@xray.pipeline</code> for the entry point, and <code>@xray.step</code> for each processing stage.</p>
+    <pre><code>{quickStartExample}</code></pre>
+  </div>
+</details>
+
+<details class="doc-section">
+  <summary>
+    <span class="section-icon">3</span>
+    <span class="section-title">View in Dashboard</span>
+    <span class="section-desc">Sign up + connect</span>
+  </summary>
+  <div class="section-content">
+    <p>Sign up for X-Ray and connect your pipeline:</p>
+    <pre><code>{dashboardSteps}</code></pre>
+    <p>Open the <a href={config.dashboardUrl}>dashboard</a> to view your pipeline runs in real-time.</p>
+  </div>
+</details>
 
 <h2>Configuration</h2>
 
-<p>Configure via environment variables or <code>xray.init()</code>:</p>
-
-<table>
-  <thead>
-    <tr>
-      <th>Variable</th>
-      <th>Default</th>
-      <th>Description</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><code>XRAY_ENDPOINT</code></td>
-      <td>http://localhost:8000</td>
-      <td>Backend URL</td>
-    </tr>
-    <tr>
-      <td><code>XRAY_DISABLED</code></td>
-      <td>false</td>
-      <td>Disable tracing</td>
-    </tr>
-    <tr>
-      <td><code>XRAY_SAMPLE_RATE</code></td>
-      <td>1.0</td>
-      <td>Sampling rate (0-1)</td>
-    </tr>
-    <tr>
-      <td><code>XRAY_TOP_K</code></td>
-      <td>10</td>
-      <td>Top candidates to capture</td>
-    </tr>
-  </tbody>
-</table>
+<details class="doc-section">
+  <summary>
+    <span class="section-icon cfg">⚙</span>
+    <span class="section-title">Environment Variables</span>
+    <span class="section-desc">Configure via env</span>
+  </summary>
+  <div class="section-content">
+    <p>Configure the SDK via environment variables or programmatically with <code>xray.init()</code>:</p>
+    
+    <table>
+      <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>XRAY_ENDPOINT</code></td><td><code>https://api.xray.dev</code></td><td>API endpoint URL</td></tr>
+        <tr><td><code>XRAY_DISABLED</code></td><td><code>false</code></td><td>Disable all tracing</td></tr>
+        <tr><td><code>XRAY_SAMPLE_RATE</code></td><td><code>1.0</code></td><td>Fraction of runs to trace</td></tr>
+        <tr><td><code>XRAY_TOP_K</code></td><td><code>10</code></td><td>Candidates to capture per step</td></tr>
+      </tbody>
+    </table>
+  </div>
+</details>
 
 <h2>Next Steps</h2>
 
-<ul>
-  <li><a href="/docs/sdk">SDK Reference</a> - Full API documentation</li>
-  <li><a href="/docs/api">API Reference</a> - Backend endpoints</li>
-  <li><a href="/docs/examples">Examples</a> - Real-world usage</li>
-</ul>
+<details class="doc-section">
+  <summary>
+    <span class="section-icon link">→</span>
+    <span class="section-title">Learn More</span>
+    <span class="section-desc">Documentation</span>
+  </summary>
+  <div class="section-content">
+    <ul class="link-list">
+      <li><a href="/docs/sdk">SDK Reference</a> — Full API documentation with all decorators and helper functions</li>
+      <li><a href="/docs/api">API Reference</a> — Backend REST API endpoints for querying runs and steps</li>
+      <li><a href="/docs/examples">Examples</a> — Real-world examples: RAG, search, agents, and more</li>
+    </ul>
+  </div>
+</details>
 
 </DocsLayout>
 
+<style>
+  .doc-section {
+    margin-bottom: 0.75rem;
+    border: 1px solid #27272a;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    background: #18181b;
+  }
+  
+  .doc-section summary {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    background: #18181b;
+    transition: background 0.15s;
+    list-style: none;
+  }
+  
+  .doc-section summary::-webkit-details-marker {
+    display: none;
+  }
+  
+  .doc-section summary::before {
+    content: "▶";
+    font-size: 0.625rem;
+    color: #71717a;
+    transition: transform 0.15s;
+  }
+  
+  .doc-section[open] summary::before {
+    transform: rotate(90deg);
+  }
+  
+  .doc-section summary:hover {
+    background: #27272a;
+  }
+  
+  .doc-section .section-icon {
+    font-size: 0.75rem;
+    font-weight: 700;
+    width: 1.75rem;
+    height: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  
+  .doc-section .section-icon.cfg {
+    background: rgba(168, 85, 247, 0.2);
+    color: #c084fc;
+  }
+  
+  .doc-section .section-icon.link {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+  }
+  
+  .doc-section .section-title {
+    font-size: 0.9375rem;
+    color: white;
+    font-weight: 600;
+  }
+  
+  .doc-section .section-desc {
+    color: #71717a;
+    font-size: 0.875rem;
+    margin-left: auto;
+  }
+  
+  .section-content {
+    padding: 1.25rem;
+    border-top: 1px solid #27272a;
+    background: #09090b;
+  }
+  
+  .section-content p {
+    color: #a1a1aa;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+  
+  .section-content pre {
+    background: #18181b;
+    border: 1px solid #27272a;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    overflow-x: auto;
+    margin-bottom: 0;
+  }
+  
+  .section-content code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8125rem;
+    color: #e4e4e7;
+    white-space: pre;
+  }
+  
+  .section-content table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    margin-bottom: 0;
+  }
+  
+  .section-content th {
+    text-align: left;
+    padding: 0.625rem 0.75rem;
+    background: #27272a;
+    color: white;
+    font-weight: 500;
+    font-size: 0.75rem;
+  }
+  
+  .section-content td {
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid #27272a;
+    color: #a1a1aa;
+  }
+  
+  .section-content td code {
+    background: #27272a;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    color: #f472b6;
+    font-size: 0.75rem;
+  }
+  
+  .link-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .link-list li {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #27272a;
+    color: #a1a1aa;
+  }
+  
+  .link-list li:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+  
+  .link-list li::before {
+    display: none;
+  }
+  
+  .link-list a {
+    color: #3b82f6;
+    font-weight: 500;
+    text-decoration: none;
+  }
+  
+  .link-list a:hover {
+    color: #60a5fa;
+    text-decoration: underline;
+  }
+</style>

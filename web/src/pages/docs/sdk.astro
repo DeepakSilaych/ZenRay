@@ -1,105 +1,370 @@
 ---
-import DocsLayout from '../../layouts/DocsLayout.astro'
----
+import DocsLayout from "../../layouts/DocsLayout.astro";
 
-<DocsLayout title="SDK Reference" description="Python SDK for instrumenting ML pipelines.">
-
-<h2>Decorators</h2>
-
-<h3>@xray.pipeline(name, version?)</h3>
-
-<p>Marks a function as a pipeline entry point. Creates a new run for each invocation.</p>
-
-<pre><code>@xray.pipeline("search-pipeline", version="v2.0")
+const pipelineExample = `@xray.pipeline("search-pipeline", version="v2.0")
 def search(query: str):
-    return results
-</code></pre>
+    results = retrieve(query)
+    ranked = rank(results)
+    return filter(ranked)`;
 
-<h3>@xray.step(kind)</h3>
-
-<p>Marks a function as a pipeline step. Automatically tracks input/output counts.</p>
-
-<p>Step kinds:</p>
-<ul>
-  <li><code>RETRIEVE</code> - Data retrieval (vector search, database query)</li>
-  <li><code>FILTER</code> - Filtering candidates</li>
-  <li><code>RANK</code> - Ranking/scoring</li>
-  <li><code>LLM_CALL</code> - LLM API calls</li>
-  <li><code>JUDGE</code> - LLM-as-judge evaluation</li>
-  <li><code>TRANSFORM</code> - Data transformation</li>
-  <li><code>SELECT</code> - Selection/sampling</li>
-  <li><code>TOOL_CALL</code> - External tool calls</li>
-</ul>
-
-<pre><code>@xray.step("FILTER")
+const stepExample = `@xray.step("FILTER")
 def filter_by_score(items):
-    return [i for i in items if i.score > 0.5]
-</code></pre>
+    for item in items:
+        if item.score < 0.5:
+            xray.drop(item, "low_score")
+            continue
+        yield item`;
 
-<h2>Helper Functions</h2>
-
-<h3>xray.drop(item, reason)</h3>
-
-<p>Record that an item was dropped and why.</p>
-
-<pre><code>for item in items:
+const dropExample = `for item in items:
     if item.score < 0.3:
         xray.drop(item, "low_score")
         continue
-    yield item
-</code></pre>
+    if not item.available:
+        xray.drop(item, "out_of_stock")
+        continue
+    yield item`;
 
-<h3>xray.score(item, score)</h3>
+const scoreExample = `for item in items:
+    relevance = compute_relevance(item, query)
+    xray.score(item, relevance)
+    item.score = relevance`;
 
-<p>Record a score for an item. Builds score histograms.</p>
-
-<pre><code>for item in items:
-    score = compute_relevance(item, query)
-    xray.score(item, score)
-    item.score = score
-</code></pre>
-
-<h3>xray.metric(key, value)</h3>
-
-<p>Record arbitrary metrics for the current step.</p>
-
-<pre><code>xray.metric("model", "gpt-4")
+const metricExample = `xray.metric("model", "gpt-4")
 xray.metric("tokens", 1234)
 xray.metric("latency_ms", 450)
-</code></pre>
+xray.metric("cache_hit", True)`;
 
-<h3>xray.artifact(name, content)</h3>
-
-<p>Store artifacts (prompts, responses, configs) for inspection.</p>
-
-<pre><code>xray.artifact("prompt", prompt_text)
+const artifactExample = `xray.artifact("prompt", prompt_text)
 xray.artifact("response", llm_response)
-xray.artifact("config", {"temperature": 0.7})
-</code></pre>
+xray.artifact("config", {"temperature": 0.7, "model": "gpt-4"})`;
 
-<h3>xray.tag(key, value)</h3>
-
-<p>Add searchable tags to the current run.</p>
-
-<pre><code>xray.tag("user_id", user.id)
+const tagExample = `xray.tag("user_id", user.id)
 xray.tag("experiment", "v2-embeddings")
-</code></pre>
+xray.tag("environment", "production")`;
 
-<h2>Configuration</h2>
-
-<h3>xray.init(**kwargs)</h3>
-
-<p>Initialize the SDK with custom settings.</p>
-
-<pre><code>xray.init(
-    endpoint="http://localhost:8000",
+const initExample = `xray.init(
+    api_key="your-api-key",
     disabled=False,
     sample_rate=1.0,
     batch_size=10,
     flush_interval=1.0,
     top_k=10,
-)
-</code></pre>
+)`;
+---
+
+<DocsLayout title="SDK Reference" description="Complete API reference for the X-Ray Python SDK.">
+
+<h2>Decorators</h2>
+
+<details class="doc-section" open>
+  <summary>
+    <span class="section-icon">@</span>
+    <span class="section-title">@xray.pipeline(name, version?)</span>
+    <span class="section-desc">Entry point decorator</span>
+  </summary>
+  <div class="section-content">
+    <p>Marks a function as a pipeline entry point. Each invocation creates a new <strong>run</strong> that groups all steps together.</p>
+    
+    <h4>Parameters</h4>
+    <table>
+      <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>name</code></td><td><code>str</code></td><td>Unique identifier for this pipeline</td></tr>
+        <tr><td><code>version</code></td><td><code>str</code></td><td>Optional version string for A/B testing</td></tr>
+      </tbody>
+    </table>
+    
+    <h4>Example</h4>
+    <pre><code>{pipelineExample}</code></pre>
+  </div>
+</details>
+
+<details class="doc-section">
+  <summary>
+    <span class="section-icon">@</span>
+    <span class="section-title">@xray.step(kind)</span>
+    <span class="section-desc">Step decorator</span>
+  </summary>
+  <div class="section-content">
+    <p>Marks a function as a pipeline step. Automatically tracks input/output counts and duration.</p>
+    
+    <h4>Step Kinds</h4>
+    <table>
+      <thead><tr><th>Kind</th><th>Use Case</th></tr></thead>
+      <tbody>
+        <tr><td><code>RETRIEVE</code></td><td>Vector search, database queries, API calls</td></tr>
+        <tr><td><code>FILTER</code></td><td>Removing candidates based on rules</td></tr>
+        <tr><td><code>RANK</code></td><td>Scoring and sorting candidates</td></tr>
+        <tr><td><code>LLM_CALL</code></td><td>Calls to language model APIs</td></tr>
+        <tr><td><code>JUDGE</code></td><td>LLM-as-judge evaluation steps</td></tr>
+        <tr><td><code>TRANSFORM</code></td><td>Data transformation, preprocessing</td></tr>
+        <tr><td><code>SELECT</code></td><td>Selection, sampling, deduplication</td></tr>
+        <tr><td><code>TOOL_CALL</code></td><td>External tool or function calls</td></tr>
+      </tbody>
+    </table>
+    
+    <h4>Example</h4>
+    <pre><code>{stepExample}</code></pre>
+  </div>
+</details>
+
+<h2>Helper Functions</h2>
+
+<details class="doc-section">
+  <summary>
+    <span class="section-icon fn">f</span>
+    <span class="section-title">xray.drop(item, reason)</span>
+    <span class="section-desc">Track dropped candidates</span>
+  </summary>
+  <div class="section-content">
+    <p>Record that a candidate was dropped and why. This is the key function for understanding pipeline behavior.</p>
+    
+    <h4>Parameters</h4>
+    <table>
+      <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>item</code></td><td><code>Any</code></td><td>The candidate being dropped (serialized to JSON)</td></tr>
+        <tr><td><code>reason</code></td><td><code>str</code></td><td>Human-readable reason for dropping</td></tr>
+      </tbody>
+    </table>
+    
+    <h4>Example</h4>
+    <pre><code>{dropExample}</code></pre>
+  </div>
+</details>
+
+<details class="doc-section">
+  <summary>
+    <span class="section-icon fn">f</span>
+    <span class="section-title">xray.score(item, value)</span>
+    <span class="section-desc">Record candidate scores</span>
+  </summary>
+  <div class="section-content">
+    <p>Record a score for a candidate. Builds histograms for analysis in the dashboard.</p>
+    
+    <h4>Example</h4>
+    <pre><code>{scoreExample}</code></pre>
+  </div>
+</details>
+
+<details class="doc-section">
+  <summary>
+    <span class="section-icon fn">f</span>
+    <span class="section-title">xray.metric(key, value)</span>
+    <span class="section-desc">Log key-value metrics</span>
+  </summary>
+  <div class="section-content">
+    <p>Record arbitrary key-value metrics for the current step. Useful for tracking model names, token counts, latencies.</p>
+    
+    <h4>Example</h4>
+    <pre><code>{metricExample}</code></pre>
+  </div>
+</details>
+
+<details class="doc-section">
+  <summary>
+    <span class="section-icon fn">f</span>
+    <span class="section-title">xray.artifact(name, content)</span>
+    <span class="section-desc">Store prompts and responses</span>
+  </summary>
+  <div class="section-content">
+    <p>Store artifacts like prompts, responses, or configurations for later inspection.</p>
+    
+    <h4>Example</h4>
+    <pre><code>{artifactExample}</code></pre>
+  </div>
+</details>
+
+<details class="doc-section">
+  <summary>
+    <span class="section-icon fn">f</span>
+    <span class="section-title">xray.tag(key, value)</span>
+    <span class="section-desc">Add searchable tags</span>
+  </summary>
+  <div class="section-content">
+    <p>Add searchable tags to the current run. Use for filtering runs in the dashboard.</p>
+    
+    <h4>Example</h4>
+    <pre><code>{tagExample}</code></pre>
+  </div>
+</details>
+
+<h2>Configuration</h2>
+
+<details class="doc-section">
+  <summary>
+    <span class="section-icon cfg">⚙</span>
+    <span class="section-title">xray.init(**kwargs)</span>
+    <span class="section-desc">SDK initialization</span>
+  </summary>
+  <div class="section-content">
+    <p>Initialize the SDK with custom settings. Call once at application startup.</p>
+    
+    <h4>Example</h4>
+    <pre><code>{initExample}</code></pre>
+    
+    <h4>Options</h4>
+    <table>
+      <thead><tr><th>Parameter</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>api_key</code></td><td><code>None</code></td><td>Your X-Ray API key</td></tr>
+        <tr><td><code>disabled</code></td><td><code>False</code></td><td>Disable all tracing</td></tr>
+        <tr><td><code>sample_rate</code></td><td><code>1.0</code></td><td>Fraction of runs to trace</td></tr>
+        <tr><td><code>batch_size</code></td><td><code>10</code></td><td>Events to batch before sending</td></tr>
+        <tr><td><code>flush_interval</code></td><td><code>1.0</code></td><td>Seconds between flushes</td></tr>
+        <tr><td><code>top_k</code></td><td><code>10</code></td><td>Top candidates to capture</td></tr>
+      </tbody>
+    </table>
+  </div>
+</details>
 
 </DocsLayout>
 
+<style>
+  .doc-section {
+    margin-bottom: 0.75rem;
+    border: 1px solid #27272a;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    background: #18181b;
+  }
+  
+  .doc-section summary {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    background: #18181b;
+    transition: background 0.15s;
+    list-style: none;
+  }
+  
+  .doc-section summary::-webkit-details-marker {
+    display: none;
+  }
+  
+  .doc-section summary::before {
+    content: "▶";
+    font-size: 0.625rem;
+    color: #71717a;
+    transition: transform 0.15s;
+  }
+  
+  .doc-section[open] summary::before {
+    transform: rotate(90deg);
+  }
+  
+  .doc-section summary:hover {
+    background: #27272a;
+  }
+  
+  .doc-section .section-icon {
+    font-size: 0.875rem;
+    font-weight: 700;
+    width: 1.75rem;
+    height: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    background: rgba(168, 85, 247, 0.2);
+    color: #c084fc;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  
+  .doc-section .section-icon.fn {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+  }
+  
+  .doc-section .section-icon.cfg {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+  }
+  
+  .doc-section .section-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.875rem;
+    color: white;
+    font-weight: 500;
+  }
+  
+  .doc-section .section-desc {
+    color: #71717a;
+    font-size: 0.875rem;
+    margin-left: auto;
+  }
+  
+  .section-content {
+    padding: 1.25rem;
+    border-top: 1px solid #27272a;
+    background: #09090b;
+  }
+  
+  .section-content h4 {
+    color: #a1a1aa;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .section-content h4:first-child {
+    margin-top: 0;
+  }
+  
+  .section-content p {
+    color: #a1a1aa;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+  
+  .section-content pre {
+    background: #18181b;
+    border: 1px solid #27272a;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    overflow-x: auto;
+    margin-bottom: 0;
+  }
+  
+  .section-content code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8125rem;
+    color: #e4e4e7;
+    white-space: pre;
+  }
+  
+  .section-content table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    margin-bottom: 0;
+  }
+  
+  .section-content th {
+    text-align: left;
+    padding: 0.625rem 0.75rem;
+    background: #27272a;
+    color: white;
+    font-weight: 500;
+    font-size: 0.75rem;
+  }
+  
+  .section-content td {
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid #27272a;
+    color: #a1a1aa;
+  }
+  
+  .section-content td code {
+    background: #27272a;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    color: #f472b6;
+    font-size: 0.75rem;
+  }
+</style>

@@ -11,40 +11,128 @@ interface Props {
 const { title, description } = Astro.props;
 
 const sidebar = [
-  { href: "/docs", label: "Getting Started" },
-  { href: "/docs/sdk", label: "SDK Reference" },
-  { href: "/docs/api", label: "API Reference" },
-  { href: "/docs/examples", label: "Examples" },
+  { href: "/docs", label: "Getting Started", icon: "rocket" },
+  { href: "/docs/sdk", label: "SDK Reference", icon: "code" },
+  { href: "/docs/api", label: "API Reference", icon: "server" },
+  { href: "/docs/examples", label: "Examples", icon: "beaker" },
 ];
+
+const currentPath = Astro.url.pathname;
 ---
 
 <Layout title={`${title} | X-Ray Docs`}>
   <Nav />
 
-  <div class="pt-16 min-h-screen flex">
+  <div class="pt-16 min-h-screen flex" style="background: #09090b;">
     <!-- Sidebar -->
-    <aside class="w-64 border-r border-zinc-800 p-6 hidden lg:block">
-      <nav class="sticky top-24 space-y-2">
-        {
-          sidebar.map((link) => (
-            <a
-              href={link.href}
-              class="block px-4 py-2 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-            >
-              {link.label}
-            </a>
-          ))
-        }
-      </nav>
+    <aside class="w-72 border-r border-zinc-800/50 hidden lg:block">
+      <div class="sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto">
+        <div class="p-6">
+          <div class="flex items-center gap-2 mb-6">
+            <div class="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
+              <svg class="w-4 h-4 text-accent" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/>
+              </svg>
+            </div>
+            <span class="font-semibold text-white">Documentation</span>
+          </div>
+          
+          <nav class="space-y-1">
+            {
+              sidebar.map((link) => {
+                const isActive = currentPath === link.href || (link.href !== "/docs" && currentPath.startsWith(link.href));
+                return (
+                  <a
+                    href={link.href}
+                    class={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all font-medium group ${
+                      isActive 
+                        ? 'bg-accent/10 text-accent border border-accent/20' 
+                        : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                    }`}
+                  >
+                    {link.icon === 'rocket' && (
+                      <svg class={`w-4 h-4 ${isActive ? 'text-accent' : 'text-zinc-500 group-hover:text-zinc-300'}`} fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/>
+                      </svg>
+                    )}
+                    {link.icon === 'code' && (
+                      <svg class={`w-4 h-4 ${isActive ? 'text-accent' : 'text-zinc-500 group-hover:text-zinc-300'}`} fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/>
+                      </svg>
+                    )}
+                    {link.icon === 'server' && (
+                      <svg class={`w-4 h-4 ${isActive ? 'text-accent' : 'text-zinc-500 group-hover:text-zinc-300'}`} fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z"/>
+                      </svg>
+                    )}
+                    {link.icon === 'beaker' && (
+                      <svg class={`w-4 h-4 ${isActive ? 'text-accent' : 'text-zinc-500 group-hover:text-zinc-300'}`} fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/>
+                      </svg>
+                    )}
+                    {link.label}
+                  </a>
+                );
+              })
+            }
+          </nav>
+          
+          <!-- Quick Links -->
+          <div class="mt-8 pt-6 border-t border-zinc-800">
+            <p class="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">Resources</p>
+            <div class="space-y-2">
+              <a href="https://github.com/xray-dev/xray" class="flex items-center gap-2 text-sm text-zinc-500 hover:text-white transition-colors">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                GitHub
+              </a>
+              <a href="http://localhost:3000" class="flex items-center gap-2 text-sm text-zinc-500 hover:text-white transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/>
+                </svg>
+                Sign in
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
     </aside>
 
     <!-- Content -->
-    <main class="flex-1 max-w-3xl px-8 py-12">
-      <h1 class="text-4xl font-bold mb-4">{title}</h1>
-      {description && <p class="text-xl text-zinc-400 mb-8">{description}</p>}
+    <main class="flex-1 min-w-0">
+      <div class="max-w-4xl mx-auto px-8 py-12">
+        <!-- Breadcrumb -->
+        <div class="flex items-center gap-2 text-sm text-zinc-500 mb-6">
+          <a href="/docs" class="hover:text-white transition-colors">Docs</a>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+          </svg>
+          <span class="text-zinc-400">{title}</span>
+        </div>
+        
+        <!-- Header -->
+        <div class="mb-10">
+          <h1 class="text-4xl font-bold text-white mb-4">{title}</h1>
+          {description && <p class="text-xl text-zinc-400 leading-relaxed">{description}</p>}
+        </div>
 
-      <div class="prose prose-invert prose-zinc max-w-none">
-        <slot />
+        <div class="docs-content">
+          <slot />
+        </div>
+        
+        <!-- Footer navigation -->
+        <div class="mt-16 pt-8 border-t border-zinc-800 flex items-center justify-between">
+          <a href="/docs" class="text-zinc-500 hover:text-white transition-colors text-sm">
+            ← Back to Docs
+          </a>
+          <a href="https://github.com/xray-dev/xray" class="text-zinc-500 hover:text-white transition-colors text-sm flex items-center gap-2">
+            Edit on GitHub
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/>
+            </svg>
+          </a>
+        </div>
       </div>
     </main>
   </div>
@@ -52,32 +140,157 @@ const sidebar = [
   <Footer />
 </Layout>
 
-<style>
-  .prose :global(h2) {
-    @apply text-2xl font-semibold mt-12 mb-4 text-white;
+<style is:global>
+  .docs-content h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+    margin-top: 3rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #27272a;
   }
-  .prose :global(h3) {
-    @apply text-xl font-medium mt-8 mb-3 text-white;
+  
+  .docs-content h2:first-child {
+    margin-top: 0;
   }
-  .prose :global(p) {
-    @apply text-zinc-300 leading-relaxed mb-4;
+  
+  .docs-content h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #3b82f6;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    font-family: 'JetBrains Mono', monospace;
   }
-  .prose :global(pre) {
-    @apply bg-zinc-900 border border-zinc-800 rounded-xl p-4 overflow-x-auto mb-6;
+  
+  .docs-content p {
+    color: #a1a1aa;
+    line-height: 1.75;
+    margin-bottom: 1rem;
   }
-  .prose :global(code) {
-    @apply font-mono text-sm;
+  
+  .docs-content pre {
+    background: #18181b;
+    border: 1px solid #27272a;
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    overflow-x: auto;
+    margin-bottom: 1.5rem;
+    font-size: 0.875rem;
+    line-height: 1.7;
   }
-  .prose :global(ul) {
-    @apply list-disc list-inside space-y-2 text-zinc-300 mb-6;
+  
+  .docs-content code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.875rem;
   }
-  .prose :global(table) {
-    @apply w-full border-collapse mb-6;
+  
+  .docs-content :not(pre) > code {
+    background: #27272a;
+    color: #f472b6;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.8125rem;
   }
-  .prose :global(th) {
-    @apply text-left p-3 border-b border-zinc-800 text-zinc-400 text-sm font-medium;
+  
+  .docs-content pre code {
+    color: #e4e4e7;
+    background: transparent;
+    padding: 0;
   }
-  .prose :global(td) {
-    @apply p-3 border-b border-zinc-800 text-zinc-300;
+  
+  .docs-content ul {
+    margin-bottom: 1.5rem;
+    padding-left: 0;
+  }
+  
+  .docs-content li {
+    color: #a1a1aa;
+    margin-bottom: 0.5rem;
+    padding-left: 1.5rem;
+    position: relative;
+  }
+  
+  .docs-content li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.625rem;
+    width: 6px;
+    height: 6px;
+    background: #3b82f6;
+    border-radius: 50%;
+  }
+  
+  .docs-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+    font-size: 0.875rem;
+  }
+  
+  .docs-content thead {
+    background: #18181b;
+  }
+  
+  .docs-content th {
+    text-align: left;
+    padding: 0.875rem 1rem;
+    color: white;
+    font-weight: 600;
+    border-bottom: 1px solid #3f3f46;
+  }
+  
+  .docs-content td {
+    padding: 0.875rem 1rem;
+    color: #a1a1aa;
+    border-bottom: 1px solid #27272a;
+  }
+  
+  .docs-content tbody tr:hover {
+    background: #18181b;
+  }
+  
+  .docs-content a {
+    color: #3b82f6;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  
+  .docs-content a:hover {
+    text-decoration: underline;
+  }
+  
+  .docs-content strong {
+    color: white;
+    font-weight: 600;
+  }
+  
+  /* Custom components */
+  .docs-content .info-box {
+    background: #172554;
+    border: 1px solid #1e40af;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .docs-content .info-box p {
+    color: #93c5fd;
+    margin: 0;
+  }
+  
+  .docs-content .warning-box {
+    background: #422006;
+    border: 1px solid #92400e;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .docs-content .warning-box p {
+    color: #fcd34d;
+    margin: 0;
   }
 </style>

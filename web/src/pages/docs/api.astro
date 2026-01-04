@@ -1,150 +1,313 @@
 ---
-import DocsLayout from '../../layouts/DocsLayout.astro'
+import DocsLayout from "../../layouts/DocsLayout.astro";
+import { config } from "../../config";
+
+const healthRes = '{\n  "status": "ok",\n  "timestamp": "2024-01-15T10:30:00.000Z"\n}';
+
+const runsRes = '[\n  {\n    "run_id": "run-abc123",\n    "pipeline_name": "search",\n    "version": "v1.0",\n    "status": "SUCCESS",\n    "started_at": "2024-01-15T10:30:00.000Z",\n    "ended_at": "2024-01-15T10:30:01.234Z",\n    "duration_ms": 1234,\n    "tags": { "user_id": "123" },\n    "step_count": 5\n  }\n]';
+
+const runDetailRes = '{\n  "run": {\n    "run_id": "run-abc123",\n    "pipeline_name": "search",\n    "status": "SUCCESS"\n  },\n  "steps": [\n    {\n      "step_id": "step-xyz789",\n      "kind": "FILTER",\n      "name": "filter_by_score",\n      "input_count": 100,\n      "output_count": 45\n    }\n  ]\n}';
+
+const traceRes = '{\n  "query": "product-456",\n  "run_id": "run-abc123",\n  "found": true,\n  "journey": [\n    {\n      "step_id": "step-1",\n      "step_name": "retrieve",\n      "status": "kept"\n    },\n    {\n      "step_id": "step-2",\n      "step_name": "filter_by_score",\n      "status": "dropped",\n      "drop_reason": "low_score"\n    }\n  ]\n}';
+
+const stepRes = '{\n  "step": {\n    "step_id": "step-xyz789",\n    "kind": "FILTER",\n    "input_count": 100,\n    "output_count": 45\n  },\n  "candidate_set": {\n    "reason_histogram": {\n      "low_score": 40,\n      "duplicate": 10\n    }\n  },\n  "artifacts": [\n    { "type": "prompt", "content": "..." }\n  ]\n}';
+
+const compareRes = '{\n  "run_a": { ... },\n  "run_b": { ... },\n  "step_comparisons": [\n    {\n      "step_name": "filter",\n      "a_output": 45,\n      "b_output": 38,\n      "delta": -7\n    }\n  ]\n}';
+
+const ingestBody = '{\n  "schema_version": "1.0",\n  "runs": [ ... ],\n  "steps": [ ... ]\n}';
+
+const ingestRes = '{\n  "accepted_runs": 1,\n  "accepted_steps": 5,\n  "queued": true,\n  "errors": []\n}';
 ---
 
-<DocsLayout title="API Reference" description="REST API for the X-Ray backend.">
+<DocsLayout title="API Reference" description="REST API reference for the X-Ray backend. Query runs, steps, and candidates programmatically.">
 
-<h2>Base URL</h2>
+<div class="info-box">
+  <p><strong>Base URL:</strong> <code>{config.apiUrl}</code></p>
+</div>
 
-<pre><code>http://localhost:8000</code></pre>
+<h2>Health & Status</h2>
 
-<h2>Endpoints</h2>
+<details class="api-endpoint" open>
+  <summary>
+    <span class="method get">GET</span>
+    <span class="path">/health</span>
+    <span class="desc">Check if the backend is running</span>
+  </summary>
+  <div class="endpoint-content">
+    <p>Returns the health status and current timestamp.</p>
+    <h4>Request</h4>
+    <pre><code>curl https://api.xray.dev/health</code></pre>
+    <h4>Response</h4>
+    <pre><code set:html={healthRes}></code></pre>
+  </div>
+</details>
 
-<h3>Health Check</h3>
+<h2>Runs</h2>
 
-<pre><code>GET /health
+<details class="api-endpoint">
+  <summary>
+    <span class="method get">GET</span>
+    <span class="path">/runs</span>
+    <span class="desc">List all pipeline runs</span>
+  </summary>
+  <div class="endpoint-content">
+    <p>Returns a paginated list of pipeline runs with optional filters.</p>
+    <h4>Query Parameters</h4>
+    <table>
+      <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>pipeline_name</code></td><td>string</td><td>Filter by pipeline name</td></tr>
+        <tr><td><code>status</code></td><td>string</td><td>SUCCESS, FAILED, RUNNING</td></tr>
+        <tr><td><code>limit</code></td><td>number</td><td>Max results (default 100)</td></tr>
+        <tr><td><code>offset</code></td><td>number</td><td>Pagination offset</td></tr>
+      </tbody>
+    </table>
+    <h4>Request</h4>
+    <pre><code>curl "https://api.xray.dev/runs?limit=10"</code></pre>
+    <h4>Response</h4>
+    <pre><code set:html={runsRes}></code></pre>
+  </div>
+</details>
 
-Response:
-{
-  "status": "ok",
-  "timestamp": "2024-01-01T00:00:00.000Z"
-}
-</code></pre>
+<details class="api-endpoint">
+  <summary>
+    <span class="method get">GET</span>
+    <span class="path">/runs/:runId</span>
+    <span class="desc">Get run details with steps</span>
+  </summary>
+  <div class="endpoint-content">
+    <p>Returns detailed information about a specific run.</p>
+    <h4>Request</h4>
+    <pre><code>curl https://api.xray.dev/runs/run-abc123</code></pre>
+    <h4>Response</h4>
+    <pre><code set:html={runDetailRes}></code></pre>
+  </div>
+</details>
 
-<h3>List Runs</h3>
+<details class="api-endpoint">
+  <summary>
+    <span class="method get">GET</span>
+    <span class="path">/runs/:runId/trace</span>
+    <span class="desc">Trace a candidate through the pipeline</span>
+  </summary>
+  <div class="endpoint-content">
+    <p>Search for a specific candidate and trace its journey through every step.</p>
+    <h4>Query Parameters</h4>
+    <table>
+      <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>q</code></td><td>string</td><td>Search term to find in candidate data</td></tr>
+      </tbody>
+    </table>
+    <h4>Request</h4>
+    <pre><code>curl "https://api.xray.dev/runs/run-abc123/trace?q=product-456"</code></pre>
+    <h4>Response</h4>
+    <pre><code set:html={traceRes}></code></pre>
+  </div>
+</details>
 
-<pre><code>GET /runs?pipeline_name=...&status=...&limit=100&offset=0
+<h2>Steps</h2>
 
-Response:
-[
-  {
-    "run_id": "run-abc123",
-    "pipeline_name": "search",
-    "version": "v1.0",
-    "status": "SUCCESS",
-    "started_at": "2024-01-01T00:00:00.000Z",
-    "ended_at": "2024-01-01T00:00:01.000Z",
-    "tags": { "user_id": "123" },
-    "step_count": 5
-  }
-]
-</code></pre>
+<details class="api-endpoint">
+  <summary>
+    <span class="method get">GET</span>
+    <span class="path">/steps/:stepId</span>
+    <span class="desc">Get step details with candidates</span>
+  </summary>
+  <div class="endpoint-content">
+    <p>Returns detailed information about a step including candidates, artifacts, and metrics.</p>
+    <h4>Request</h4>
+    <pre><code>curl https://api.xray.dev/steps/step-xyz789</code></pre>
+    <h4>Response</h4>
+    <pre><code set:html={stepRes}></code></pre>
+  </div>
+</details>
 
-<h3>Get Run Detail</h3>
+<h2>Compare</h2>
 
-<pre><code>GET /runs/:runId
+<details class="api-endpoint">
+  <summary>
+    <span class="method get">GET</span>
+    <span class="path">/compare</span>
+    <span class="desc">Compare two runs side-by-side</span>
+  </summary>
+  <div class="endpoint-content">
+    <p>Compare two pipeline runs to identify differences.</p>
+    <h4>Query Parameters</h4>
+    <table>
+      <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>run_a</code></td><td>string</td><td>First run ID</td></tr>
+        <tr><td><code>run_b</code></td><td>string</td><td>Second run ID</td></tr>
+      </tbody>
+    </table>
+    <h4>Request</h4>
+    <pre><code>curl "https://api.xray.dev/compare?run_a=run-abc&run_b=run-xyz"</code></pre>
+    <h4>Response</h4>
+    <pre><code set:html={compareRes}></code></pre>
+  </div>
+</details>
 
-Response:
-{
-  "run": { ... },
-  "steps": [
-    {
-      "step_id": "step-xyz",
-      "kind": "FILTER",
-      "name": "filter_by_score",
-      "input_count": 100,
-      "output_count": 45,
-      "drop_ratio": 0.55,
-      "duration_ms": 23
-    }
-  ]
-}
-</code></pre>
+<h2>Ingest</h2>
 
-<h3>Trace Candidate</h3>
-
-<pre><code>GET /runs/:runId/trace?q=searchterm
-
-Response:
-{
-  "query": "searchterm",
-  "run_id": "run-abc123",
-  "found": true,
-  "journey": [
-    {
-      "step_id": "step-1",
-      "step_name": "retrieve",
-      "status": "kept",
-      "candidate": { ... }
-    },
-    {
-      "step_id": "step-2", 
-      "step_name": "filter",
-      "status": "dropped",
-      "drop_reason": "low_score",
-      "candidate": { ... }
-    }
-  ]
-}
-</code></pre>
-
-<h3>Get Step Detail</h3>
-
-<pre><code>GET /steps/:stepId
-
-Response:
-{
-  "step": { ... },
-  "candidate_set": {
-    "input_count": 100,
-    "output_count": 45,
-    "reason_histogram": { "low_score": 40, "duplicate": 15 },
-    "top_kept": [ ... ],
-    "top_dropped": [ ... ]
-  },
-  "artifacts": [
-    { "type": "prompt", "content": "..." },
-    { "type": "response", "content": "..." }
-  ]
-}
-</code></pre>
-
-<h3>Compare Runs</h3>
-
-<pre><code>GET /compare?run_a=...&run_b=...
-
-Response:
-{
-  "run_a": { ... },
-  "run_b": { ... },
-  "step_comparisons": [ ... ],
-  "summary": {
-    "steps_in_both": 5,
-    "duration_delta_ms": -120,
-    "output_changed": true
-  }
-}
-</code></pre>
-
-<h3>Ingest Data</h3>
-
-<pre><code>POST /ingest
-
-Body:
-{
-  "schema_version": "1.0",
-  "runs": [ ... ],
-  "steps": [ ... ]
-}
-
-Response:
-{
-  "accepted_runs": 1,
-  "accepted_steps": 5,
-  "queued": true,
-  "errors": []
-}
-</code></pre>
+<details class="api-endpoint">
+  <summary>
+    <span class="method post">POST</span>
+    <span class="path">/ingest</span>
+    <span class="desc">Ingest run and step data</span>
+  </summary>
+  <div class="endpoint-content">
+    <p>Ingest data from the SDK. Called automatically.</p>
+    <h4>Request Body</h4>
+    <pre><code set:html={ingestBody}></code></pre>
+    <h4>Request</h4>
+    <pre><code>curl -X POST https://api.xray.dev/ingest -H "Content-Type: application/json" -d @payload.json</code></pre>
+    <h4>Response</h4>
+    <pre><code set:html={ingestRes}></code></pre>
+  </div>
+</details>
 
 </DocsLayout>
 
+<style>
+  .api-endpoint {
+    margin-bottom: 1rem;
+    border: 1px solid #27272a;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    background: #18181b;
+  }
+  
+  .api-endpoint summary {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    background: #18181b;
+    transition: background 0.15s;
+    list-style: none;
+  }
+  
+  .api-endpoint summary::-webkit-details-marker {
+    display: none;
+  }
+  
+  .api-endpoint summary::before {
+    content: "▶";
+    font-size: 0.625rem;
+    color: #71717a;
+    transition: transform 0.15s;
+  }
+  
+  .api-endpoint[open] summary::before {
+    transform: rotate(90deg);
+  }
+  
+  .api-endpoint summary:hover {
+    background: #27272a;
+  }
+  
+  .api-endpoint .method {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  
+  .api-endpoint .method.get {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+  }
+  
+  .api-endpoint .method.post {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+  }
+  
+  .api-endpoint .path {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.875rem;
+    color: white;
+    font-weight: 500;
+  }
+  
+  .api-endpoint .desc {
+    color: #71717a;
+    font-size: 0.875rem;
+    margin-left: auto;
+  }
+  
+  .endpoint-content {
+    padding: 1.25rem;
+    border-top: 1px solid #27272a;
+    background: #09090b;
+  }
+  
+  .endpoint-content h4 {
+    color: #a1a1aa;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .endpoint-content h4:first-child {
+    margin-top: 0;
+  }
+  
+  .endpoint-content p {
+    color: #a1a1aa;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+  
+  .endpoint-content pre {
+    background: #18181b;
+    border: 1px solid #27272a;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    overflow-x: auto;
+    margin-bottom: 0;
+  }
+  
+  .endpoint-content code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8125rem;
+    color: #e4e4e7;
+    white-space: pre;
+  }
+  
+  .endpoint-content table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    margin-bottom: 0;
+  }
+  
+  .endpoint-content th {
+    text-align: left;
+    padding: 0.625rem 0.75rem;
+    background: #27272a;
+    color: white;
+    font-weight: 500;
+    font-size: 0.75rem;
+  }
+  
+  .endpoint-content td {
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid #27272a;
+    color: #a1a1aa;
+  }
+  
+  .endpoint-content td code {
+    background: #27272a;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    color: #f472b6;
+    font-size: 0.75rem;
+  }
+</style>

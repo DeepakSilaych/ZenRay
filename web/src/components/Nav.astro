@@ -1,40 +1,40 @@
 ---
+import { config } from "../config";
+
 const links = [
   { href: "/docs", label: "Docs" },
-  { href: "/docs/sdk", label: "SDK" },
-  { href: "/docs/api", label: "API" },
-  { href: "https://github.com/xray-dev/xray", label: "GitHub" },
 ];
 ---
 
-<nav
-  class="fixed top-0 left-0 right-0 z-50 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-xl"
->
+<nav class="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-hatchet-bg/80 backdrop-blur-md">
   <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-    <a href="/" class="flex items-center gap-2 text-xl font-semibold">
-      <span class="text-brand-500">◈</span>
-      <span>X-Ray</span>
-    </a>
-
-    <div class="flex items-center gap-8">
+    <div class="flex items-center gap-10">
+      <a href="/" class="flex items-center gap-2">
+        <span class="font-semibold text-white">{config.siteName}</span>
+      </a>
+      
       <div class="hidden md:flex items-center gap-6">
-        {
-          links.map((link) => (
-            <a
-              href={link.href}
-              class="text-sm text-zinc-400 hover:text-white transition-colors"
-            >
-              {link.label}
-            </a>
-          ))
-        }
+        {links.map((link) => (
+          <a href={link.href} class="text-sm text-zinc-400 hover:text-white transition-colors">
+            {link.label}
+          </a>
+        ))}
       </div>
+    </div>
 
-      <a
-        href="http://localhost:3000"
-        class="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-zinc-950 text-sm font-medium rounded-lg transition-colors"
+    <div class="flex items-center gap-4">
+      <a 
+        href={config.githubUrl}
+        class="hidden sm:flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors"
       >
-        Dashboard →
+        <span class="hidden lg:inline">GitHub</span>
+      </a>
+      
+      <a
+        href={config.dashboardUrl}
+        class="px-4 py-2 bg-white text-black text-sm font-medium rounded-lg hover:bg-zinc-100 transition-colors"
+      >
+        Sign in
       </a>
     </div>
   </div>
