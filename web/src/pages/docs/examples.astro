@@ -1,0 +1,129 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro'
+---
+
+<DocsLayout title="Examples" description="Real-world examples of X-Ray instrumentation.">
+
+<h2>E-commerce Search</h2>
+
+<pre><code>import xray
+
+@xray.pipeline("product-search")
+def search_products(query: str, user_id: str):
+    xray.tag("user_id", user_id)
+    
+    candidates = retrieve(query)
+    scored = score(candidates, query)
+    filtered = filter_availability(scored)
+    personalized = personalize(filtered, user_id)
+    
+    return personalized[:10]
+
+@xray.step("RETRIEVE")
+def retrieve(query: str):
+    xray.metric("index", "products-v2")
+    results = vector_search(query, limit=1000)
+    return results
+
+@xray.step("RANK")
+def score(items, query):
+    for item in items:
+        relevance = compute_score(item, query)
+        xray.score(item, relevance)
+        item.score = relevance
+    return sorted(items, key=lambda x: x.score, reverse=True)
+
+@xray.step("FILTER")
+def filter_availability(items):
+    for item in items:
+        if not item.in_stock:
+            xray.drop(item, "out_of_stock")
+            continue
+        if item.price > 1000:
+            xray.drop(item, "price_too_high")
+            continue
+        yield item
+</code></pre>
+
+<h2>RAG Document Retrieval</h2>
+
+<pre><code>import xray
+
+@xray.pipeline("rag-retrieval")
+def answer_question(question: str):
+    docs = retrieve_docs(question)
+    relevant = filter_relevance(docs, question)
+    answer = generate_answer(question, relevant)
+    return answer
+
+@xray.step("RETRIEVE")
+def retrieve_docs(question: str):
+    embedding = embed(question)
+    xray.metric("model", "text-embedding-3-small")
+    return vector_db.search(embedding, limit=100)
+
+@xray.step("FILTER")
+def filter_relevance(docs, question):
+    for doc in docs:
+        score = cross_encoder.score(question, doc.text)
+        xray.score(doc, score)
+        if score < 0.3:
+            xray.drop(doc, "low_relevance")
+            continue
+        yield doc
+
+@xray.step("LLM_CALL")
+def generate_answer(question: str, docs: list):
+    context = "\n".join([d.text for d in docs])
+    prompt = f"Answer based on context:\n{context}\n\nQ: {question}"
+    
+    xray.artifact("prompt", prompt)
+    xray.metric("context_docs", len(docs))
+    
+    response = openai.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}]
+    )
+    
+    answer = response.choices[0].message.content
+    xray.artifact("response", answer)
+    xray.metric("tokens", response.usage.total_tokens)
+    
+    return answer
+</code></pre>
+
+<h2>Content Moderation</h2>
+
+<pre><code>import xray
+
+@xray.pipeline("content-moderation")
+def moderate(content: str):
+    xray.tag("content_type", "user_post")
+    
+    if check_blocklist(content):
+        return {"allowed": False, "reason": "blocklist"}
+    
+    toxicity = check_toxicity(content)
+    if toxicity > 0.8:
+        return {"allowed": False, "reason": "toxic"}
+    
+    return {"allowed": True}
+
+@xray.step("FILTER")
+def check_blocklist(content: str):
+    for word in BLOCKLIST:
+        if word in content.lower():
+            xray.drop({"content": content}, f"blocklist:{word}")
+            return True
+    return False
+
+@xray.step("LLM_CALL")
+def check_toxicity(content: str):
+    xray.artifact("input", content)
+    score = toxicity_model.predict(content)
+    xray.metric("toxicity_score", score)
+    return score
+</code></pre>
+
+</DocsLayout>
+

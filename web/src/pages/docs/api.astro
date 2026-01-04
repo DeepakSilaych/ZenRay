@@ -1,0 +1,150 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro'
+---
+
+<DocsLayout title="API Reference" description="REST API for the X-Ray backend.">
+
+<h2>Base URL</h2>
+
+<pre><code>http://localhost:8000</code></pre>
+
+<h2>Endpoints</h2>
+
+<h3>Health Check</h3>
+
+<pre><code>GET /health
+
+Response:
+{
+  "status": "ok",
+  "timestamp": "2024-01-01T00:00:00.000Z"
+}
+</code></pre>
+
+<h3>List Runs</h3>
+
+<pre><code>GET /runs?pipeline_name=...&status=...&limit=100&offset=0
+
+Response:
+[
+  {
+    "run_id": "run-abc123",
+    "pipeline_name": "search",
+    "version": "v1.0",
+    "status": "SUCCESS",
+    "started_at": "2024-01-01T00:00:00.000Z",
+    "ended_at": "2024-01-01T00:00:01.000Z",
+    "tags": { "user_id": "123" },
+    "step_count": 5
+  }
+]
+</code></pre>
+
+<h3>Get Run Detail</h3>
+
+<pre><code>GET /runs/:runId
+
+Response:
+{
+  "run": { ... },
+  "steps": [
+    {
+      "step_id": "step-xyz",
+      "kind": "FILTER",
+      "name": "filter_by_score",
+      "input_count": 100,
+      "output_count": 45,
+      "drop_ratio": 0.55,
+      "duration_ms": 23
+    }
+  ]
+}
+</code></pre>
+
+<h3>Trace Candidate</h3>
+
+<pre><code>GET /runs/:runId/trace?q=searchterm
+
+Response:
+{
+  "query": "searchterm",
+  "run_id": "run-abc123",
+  "found": true,
+  "journey": [
+    {
+      "step_id": "step-1",
+      "step_name": "retrieve",
+      "status": "kept",
+      "candidate": { ... }
+    },
+    {
+      "step_id": "step-2", 
+      "step_name": "filter",
+      "status": "dropped",
+      "drop_reason": "low_score",
+      "candidate": { ... }
+    }
+  ]
+}
+</code></pre>
+
+<h3>Get Step Detail</h3>
+
+<pre><code>GET /steps/:stepId
+
+Response:
+{
+  "step": { ... },
+  "candidate_set": {
+    "input_count": 100,
+    "output_count": 45,
+    "reason_histogram": { "low_score": 40, "duplicate": 15 },
+    "top_kept": [ ... ],
+    "top_dropped": [ ... ]
+  },
+  "artifacts": [
+    { "type": "prompt", "content": "..." },
+    { "type": "response", "content": "..." }
+  ]
+}
+</code></pre>
+
+<h3>Compare Runs</h3>
+
+<pre><code>GET /compare?run_a=...&run_b=...
+
+Response:
+{
+  "run_a": { ... },
+  "run_b": { ... },
+  "step_comparisons": [ ... ],
+  "summary": {
+    "steps_in_both": 5,
+    "duration_delta_ms": -120,
+    "output_changed": true
+  }
+}
+</code></pre>
+
+<h3>Ingest Data</h3>
+
+<pre><code>POST /ingest
+
+Body:
+{
+  "schema_version": "1.0",
+  "runs": [ ... ],
+  "steps": [ ... ]
+}
+
+Response:
+{
+  "accepted_runs": 1,
+  "accepted_steps": 5,
+  "queued": true,
+  "errors": []
+}
+</code></pre>
+
+</DocsLayout>
+

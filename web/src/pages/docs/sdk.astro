@@ -1,0 +1,105 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro'
+---
+
+<DocsLayout title="SDK Reference" description="Python SDK for instrumenting ML pipelines.">
+
+<h2>Decorators</h2>
+
+<h3>@xray.pipeline(name, version?)</h3>
+
+<p>Marks a function as a pipeline entry point. Creates a new run for each invocation.</p>
+
+<pre><code>@xray.pipeline("search-pipeline", version="v2.0")
+def search(query: str):
+    return results
+</code></pre>
+
+<h3>@xray.step(kind)</h3>
+
+<p>Marks a function as a pipeline step. Automatically tracks input/output counts.</p>
+
+<p>Step kinds:</p>
+<ul>
+  <li><code>RETRIEVE</code> - Data retrieval (vector search, database query)</li>
+  <li><code>FILTER</code> - Filtering candidates</li>
+  <li><code>RANK</code> - Ranking/scoring</li>
+  <li><code>LLM_CALL</code> - LLM API calls</li>
+  <li><code>JUDGE</code> - LLM-as-judge evaluation</li>
+  <li><code>TRANSFORM</code> - Data transformation</li>
+  <li><code>SELECT</code> - Selection/sampling</li>
+  <li><code>TOOL_CALL</code> - External tool calls</li>
+</ul>
+
+<pre><code>@xray.step("FILTER")
+def filter_by_score(items):
+    return [i for i in items if i.score > 0.5]
+</code></pre>
+
+<h2>Helper Functions</h2>
+
+<h3>xray.drop(item, reason)</h3>
+
+<p>Record that an item was dropped and why.</p>
+
+<pre><code>for item in items:
+    if item.score < 0.3:
+        xray.drop(item, "low_score")
+        continue
+    yield item
+</code></pre>
+
+<h3>xray.score(item, score)</h3>
+
+<p>Record a score for an item. Builds score histograms.</p>
+
+<pre><code>for item in items:
+    score = compute_relevance(item, query)
+    xray.score(item, score)
+    item.score = score
+</code></pre>
+
+<h3>xray.metric(key, value)</h3>
+
+<p>Record arbitrary metrics for the current step.</p>
+
+<pre><code>xray.metric("model", "gpt-4")
+xray.metric("tokens", 1234)
+xray.metric("latency_ms", 450)
+</code></pre>
+
+<h3>xray.artifact(name, content)</h3>
+
+<p>Store artifacts (prompts, responses, configs) for inspection.</p>
+
+<pre><code>xray.artifact("prompt", prompt_text)
+xray.artifact("response", llm_response)
+xray.artifact("config", {"temperature": 0.7})
+</code></pre>
+
+<h3>xray.tag(key, value)</h3>
+
+<p>Add searchable tags to the current run.</p>
+
+<pre><code>xray.tag("user_id", user.id)
+xray.tag("experiment", "v2-embeddings")
+</code></pre>
+
+<h2>Configuration</h2>
+
+<h3>xray.init(**kwargs)</h3>
+
+<p>Initialize the SDK with custom settings.</p>
+
+<pre><code>xray.init(
+    endpoint="http://localhost:8000",
+    disabled=False,
+    sample_rate=1.0,
+    batch_size=10,
+    flush_interval=1.0,
+    top_k=10,
+)
+</code></pre>
+
+</DocsLayout>
+

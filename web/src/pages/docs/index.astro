@@ -1,0 +1,84 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro'
+---
+
+<DocsLayout title="Getting Started" description="Add X-Ray to your ML pipeline in 5 minutes.">
+
+<h2>Installation</h2>
+
+<pre><code>pip install xray-sdk</code></pre>
+
+<h2>Quick Start</h2>
+
+<p>Wrap your pipeline function with <code>@xray.pipeline</code> and each step with <code>@xray.step</code>:</p>
+
+<pre><code>import xray
+
+xray.init(endpoint="http://localhost:8000")
+
+@xray.pipeline("my-pipeline")
+def process(query: str):
+    results = retrieve(query)
+    ranked = rank(results)
+    return filter(ranked)
+
+@xray.step("RETRIEVE")
+def retrieve(query: str):
+    # Your retrieval logic
+    return results
+
+@xray.step("FILTER")
+def filter(items):
+    for item in items:
+        if item.score < 0.5:
+            xray.drop(item, "low_score")
+            continue
+        yield item
+</code></pre>
+
+<h2>Configuration</h2>
+
+<p>Configure via environment variables or <code>xray.init()</code>:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>XRAY_ENDPOINT</code></td>
+      <td>http://localhost:8000</td>
+      <td>Backend URL</td>
+    </tr>
+    <tr>
+      <td><code>XRAY_DISABLED</code></td>
+      <td>false</td>
+      <td>Disable tracing</td>
+    </tr>
+    <tr>
+      <td><code>XRAY_SAMPLE_RATE</code></td>
+      <td>1.0</td>
+      <td>Sampling rate (0-1)</td>
+    </tr>
+    <tr>
+      <td><code>XRAY_TOP_K</code></td>
+      <td>10</td>
+      <td>Top candidates to capture</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Next Steps</h2>
+
+<ul>
+  <li><a href="/docs/sdk">SDK Reference</a> - Full API documentation</li>
+  <li><a href="/docs/api">API Reference</a> - Backend endpoints</li>
+  <li><a href="/docs/examples">Examples</a> - Real-world usage</li>
+</ul>
+
+</DocsLayout>
+
