@@ -1,52 +1,54 @@
 ---
-import Layout from './Layout.astro'
-import Nav from '../components/Nav.astro'
-import Footer from '../components/Footer.astro'
+import Layout from "./Layout.astro";
+import Nav from "../components/Nav.astro";
+import Footer from "../components/Footer.astro";
 
 interface Props {
-  title: string
-  description?: string
+  title: string;
+  description?: string;
 }
 
-const { title, description } = Astro.props
+const { title, description } = Astro.props;
 
 const sidebar = [
-  { href: '/docs', label: 'Getting Started' },
-  { href: '/docs/sdk', label: 'SDK Reference' },
-  { href: '/docs/api', label: 'API Reference' },
-  { href: '/docs/examples', label: 'Examples' },
-]
+  { href: "/docs", label: "Getting Started" },
+  { href: "/docs/sdk", label: "SDK Reference" },
+  { href: "/docs/api", label: "API Reference" },
+  { href: "/docs/examples", label: "Examples" },
+];
 ---
 
 <Layout title={`${title} | X-Ray Docs`}>
   <Nav />
-  
+
   <div class="pt-16 min-h-screen flex">
     <!-- Sidebar -->
     <aside class="w-64 border-r border-zinc-800 p-6 hidden lg:block">
       <nav class="sticky top-24 space-y-2">
-        {sidebar.map(link => (
-          <a 
-            href={link.href}
-            class="block px-4 py-2 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-          >
-            {link.label}
-          </a>
-        ))}
+        {
+          sidebar.map((link) => (
+            <a
+              href={link.href}
+              class="block px-4 py-2 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+            >
+              {link.label}
+            </a>
+          ))
+        }
       </nav>
     </aside>
-    
+
     <!-- Content -->
     <main class="flex-1 max-w-3xl px-8 py-12">
       <h1 class="text-4xl font-bold mb-4">{title}</h1>
       {description && <p class="text-xl text-zinc-400 mb-8">{description}</p>}
-      
+
       <div class="prose prose-invert prose-zinc max-w-none">
         <slot />
       </div>
     </main>
   </div>
-  
+
   <Footer />
 </Layout>
 
@@ -79,4 +81,3 @@ const sidebar = [
     @apply p-3 border-b border-zinc-800 text-zinc-300;
   }
 </style>
-

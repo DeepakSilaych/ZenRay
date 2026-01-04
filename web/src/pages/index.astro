@@ -1,67 +1,78 @@
 ---
-import Layout from '../layouts/Layout.astro'
-import Nav from '../components/Nav.astro'
-import Footer from '../components/Footer.astro'
+import Layout from "../layouts/Layout.astro";
+import Nav from "../components/Nav.astro";
+import Footer from "../components/Footer.astro";
 
 const features = [
   {
-    icon: '🔍',
-    title: 'Candidate Tracing',
-    desc: 'Track every item through your pipeline. See exactly where and why candidates are dropped.',
+    icon: "🔍",
+    title: "Candidate Tracing",
+    desc: "Track every item through your pipeline. See exactly where and why candidates are dropped.",
   },
   {
-    icon: '📊',
-    title: 'Step Analytics',
-    desc: 'Visualize input/output counts, drop ratios, and performance metrics for each step.',
+    icon: "📊",
+    title: "Step Analytics",
+    desc: "Visualize input/output counts, drop ratios, and performance metrics for each step.",
   },
   {
-    icon: '🔬',
-    title: 'Deep Inspection',
-    desc: 'Inspect prompts, responses, scores, and artifacts at every stage of your pipeline.',
+    icon: "🔬",
+    title: "Deep Inspection",
+    desc: "Inspect prompts, responses, scores, and artifacts at every stage of your pipeline.",
   },
   {
-    icon: '⚡',
-    title: 'Zero Config',
-    desc: 'Add two decorators to your code. Auto-tracking handles the rest.',
+    icon: "⚡",
+    title: "Zero Config",
+    desc: "Add two decorators to your code. Auto-tracking handles the rest.",
   },
-]
+];
 ---
 
 <Layout title="X-Ray | ML Pipeline Observability">
   <Nav />
-  
+
   <main class="pt-16">
     <!-- Hero -->
-    <section class="min-h-[80vh] flex items-center justify-center relative overflow-hidden">
-      <div class="absolute inset-0 bg-gradient-to-b from-brand-500/5 via-transparent to-transparent"></div>
-      <div class="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-brand-500/10 rounded-full blur-[120px]"></div>
-      
+    <section
+      class="min-h-[80vh] flex items-center justify-center relative overflow-hidden"
+    >
+      <div
+        class="absolute inset-0 bg-gradient-to-b from-brand-500/5 via-transparent to-transparent"
+      >
+      </div>
+      <div
+        class="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-brand-500/10 rounded-full blur-[120px]"
+      >
+      </div>
+
       <div class="relative max-w-4xl mx-auto px-6 text-center">
-        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-400 mb-8">
+        <div
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-400 mb-8"
+        >
           <span class="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></span>
           Open Source ML Observability
         </div>
-        
+
         <h1 class="text-5xl md:text-7xl font-bold leading-tight mb-6">
           See inside your
           <span class="text-brand-500">ML pipelines</span>
         </h1>
-        
+
         <p class="text-xl text-zinc-400 max-w-2xl mx-auto mb-10">
-          Debug retrieval, ranking, and filtering pipelines. 
-          Track every candidate from input to output. 
-          Understand why things break.
+          Debug retrieval, ranking, and filtering pipelines. Track every
+          candidate from input to output. Understand why things break.
         </p>
-        
-        <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <a 
-            href="/docs" 
+
+        <div
+          class="flex flex-col sm:flex-row items-center justify-center gap-4"
+        >
+          <a
+            href="/docs"
             class="px-8 py-4 bg-brand-500 hover:bg-brand-600 text-zinc-950 font-semibold rounded-xl transition-colors"
           >
             Get Started
           </a>
-          <a 
-            href="http://localhost:3000" 
+          <a
+            href="http://localhost:3000"
             class="px-8 py-4 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 font-medium rounded-xl transition-colors"
           >
             View Demo →
@@ -69,62 +80,72 @@ const features = [
         </div>
       </div>
     </section>
-    
+
     <!-- Code Example -->
     <section class="py-24">
       <div class="max-w-4xl mx-auto px-6">
-        <div class="bg-zinc-900 rounded-2xl border border-zinc-800 overflow-hidden">
-          <div class="flex items-center gap-2 px-4 py-3 border-b border-zinc-800">
+        <div
+          class="bg-zinc-900 rounded-2xl border border-zinc-800 overflow-hidden"
+        >
+          <div
+            class="flex items-center gap-2 px-4 py-3 border-b border-zinc-800"
+          >
             <div class="w-3 h-3 rounded-full bg-zinc-700"></div>
             <div class="w-3 h-3 rounded-full bg-zinc-700"></div>
             <div class="w-3 h-3 rounded-full bg-zinc-700"></div>
             <span class="ml-2 text-sm text-zinc-500">pipeline.py</span>
           </div>
-          <pre class="p-6 text-sm font-mono overflow-x-auto"><code class="text-zinc-300"><span class="text-zinc-500">import</span> <span class="text-brand-500">xray</span>
+          <pre class="p-6 text-sm font-mono overflow-x-auto text-zinc-300">{`import xray
 
-<span class="text-zinc-500">@</span><span class="text-brand-500">xray.pipeline</span>(<span class="text-amber-400">"search"</span>)
-<span class="text-zinc-500">def</span> <span class="text-blue-400">search</span>(query: str):
+@xray.pipeline("search")
+def search(query: str):
     candidates = retrieve(query)
     ranked = rank(candidates)
-    <span class="text-zinc-500">return</span> filter(ranked)
+    return filter(ranked)
 
-<span class="text-zinc-500">@</span><span class="text-brand-500">xray.step</span>(<span class="text-amber-400">"FILTER"</span>)
-<span class="text-zinc-500">def</span> <span class="text-blue-400">filter</span>(items):
-    <span class="text-zinc-500">for</span> item <span class="text-zinc-500">in</span> items:
-        <span class="text-zinc-500">if</span> item.score < <span class="text-amber-400">0.5</span>:
-            <span class="text-brand-500">xray.drop</span>(item, <span class="text-amber-400">"low_score"</span>)  <span class="text-zinc-600"># Tracked!</span>
-            <span class="text-zinc-500">continue</span>
-        <span class="text-zinc-500">yield</span> item</code></pre>
+@xray.step("FILTER")
+def filter(items):
+    for item in items:
+        if item.score < 0.5:
+            xray.drop(item, "low_score")  # Tracked!
+            continue
+        yield item`}</pre>
         </div>
       </div>
     </section>
-    
+
     <!-- Features -->
     <section class="py-24 bg-zinc-900/50">
       <div class="max-w-6xl mx-auto px-6">
         <h2 class="text-3xl font-bold text-center mb-16">
           Everything you need to debug ML pipelines
         </h2>
-        
+
         <div class="grid md:grid-cols-2 gap-6">
-          {features.map(f => (
-            <div class="p-8 bg-zinc-900 rounded-2xl border border-zinc-800">
-              <div class="text-3xl mb-4">{f.icon}</div>
-              <h3 class="text-xl font-semibold mb-2">{f.title}</h3>
-              <p class="text-zinc-400">{f.desc}</p>
-            </div>
-          ))}
+          {
+            features.map((f) => (
+              <div class="p-8 bg-zinc-900 rounded-2xl border border-zinc-800">
+                <div class="text-3xl mb-4">{f.icon}</div>
+                <h3 class="text-xl font-semibold mb-2">{f.title}</h3>
+                <p class="text-zinc-400">{f.desc}</p>
+              </div>
+            ))
+          }
         </div>
       </div>
     </section>
-    
+
     <!-- CTA -->
     <section class="py-24">
       <div class="max-w-4xl mx-auto px-6 text-center">
-        <h2 class="text-3xl font-bold mb-6">Ready to see inside your pipelines?</h2>
-        <p class="text-zinc-400 mb-10">Add X-Ray to your project in under 5 minutes.</p>
-        <a 
-          href="/docs" 
+        <h2 class="text-3xl font-bold mb-6">
+          Ready to see inside your pipelines?
+        </h2>
+        <p class="text-zinc-400 mb-10">
+          Add X-Ray to your project in under 5 minutes.
+        </p>
+        <a
+          href="/docs"
           class="inline-block px-8 py-4 bg-brand-500 hover:bg-brand-600 text-zinc-950 font-semibold rounded-xl transition-colors"
         >
           Read the Docs →
@@ -132,7 +153,6 @@ const features = [
       </div>
     </section>
   </main>
-  
+
   <Footer />
 </Layout>
-
