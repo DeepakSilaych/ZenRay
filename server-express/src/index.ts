@@ -28,36 +28,28 @@ app.use('/compare', compareRouter)
 
 // Startup
 async function start() {
-  console.log('Initializing services...')
+  // Start server immediately
+  app.listen(config.port, () => {
+    console.log(`🚀 X-Ray server running on http://localhost:${config.port}`)
+  })
 
+  // Connect to services in background
   try {
     await initDb()
     console.log('✓ PostgreSQL connected')
+  } catch (err) {
+    console.warn('⚠ PostgreSQL not available:', (err as Error).message)
+  }
 
+  try {
     await initCache()
     console.log('✓ Redis connected')
-
-    initBlobStore()
-    console.log('✓ S3/MinIO configured')
-
-    app.listen(config.port, () => {
-      console.log(`\n🚀 X-Ray server running on http://localhost:${config.port}`)
-      console.log('\nEndpoints:')
-      console.log('  GET  /health')
-      console.log('  GET  /runs')
-      console.log('  GET  /runs/:id')
-      console.log('  GET  /runs/:id/trace?q=...')
-      console.log('  GET  /steps')
-      console.log('  GET  /steps/:id')
-      console.log('  GET  /steps/:id/candidates')
-      console.log('  POST /ingest')
-      console.log('  GET  /ingest/stats')
-      console.log('  GET  /compare?run_a=...&run_b=...')
-    })
   } catch (err) {
-    console.error('Failed to start server:', err)
-    process.exit(1)
+    console.warn('⚠ Redis not available:', (err as Error).message)
   }
+
+  initBlobStore()
+  console.log('✓ S3/MinIO configured')
 }
 
 // Graceful shutdown

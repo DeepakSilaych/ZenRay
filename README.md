@@ -11,7 +11,7 @@ Repository layout
 ## Prerequisites
 
 1. Docker and Docker Compose
-2. Node.js 18+ and pnpm
+2. Bun 1.0+
 3. Python 3.11+ (for SDK examples)
 
 ## 1. Start infrastructure
@@ -37,8 +37,8 @@ From repo root
 
 ```bash
 cd server-express
-pnpm install
-pnpm dev
+bun install
+bun run dev
 ```
 
 Backend URLs
@@ -49,22 +49,22 @@ Backend URLs
 
 API Endpoints
 
-| Method | Endpoint                   | Description               |
-| ------ | -------------------------- | ------------------------- |
-| GET    | /runs                      | List all runs             |
-| GET    | /runs/:id                  | Get run details           |
-| GET    | /runs/:id/trace?q=...      | Trace candidate through   |
-| GET    | /steps                     | List all steps            |
-| GET    | /steps/:id                 | Get step details          |
-| GET    | /steps/:id/candidates      | Get candidate set         |
-| POST   | /ingest                    | Ingest runs and steps     |
-| GET    | /ingest/stats              | Queue statistics          |
-| GET    | /compare?run_a=...&run_b=  | Compare two runs          |
+| Method | Endpoint                  | Description             |
+| ------ | ------------------------- | ----------------------- |
+| GET    | /runs                     | List all runs           |
+| GET    | /runs/:id                 | Get run details         |
+| GET    | /runs/:id/trace?q=...     | Trace candidate through |
+| GET    | /steps                    | List all steps          |
+| GET    | /steps/:id                | Get step details        |
+| GET    | /steps/:id/candidates     | Get candidate set       |
+| POST   | /ingest                   | Ingest runs and steps   |
+| GET    | /ingest/stats             | Queue statistics        |
+| GET    | /compare?run_a=...&run_b= | Compare two runs        |
 
 To run the background worker (optional, processes queue asynchronously)
 
 ```bash
-pnpm worker
+bun run worker
 ```
 
 ## 3. Run the web UI
@@ -73,8 +73,8 @@ From repo root
 
 ```bash
 cd client
-pnpm install
-pnpm dev --port 3000
+bun install
+bun run dev --port 3000
 ```
 
 UI URL

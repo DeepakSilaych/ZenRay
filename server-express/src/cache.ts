@@ -12,7 +12,12 @@ export async function initCache(): Promise<void> {
     host: config.redis.host,
     port: config.redis.port,
     db: config.redis.db,
+    maxRetriesPerRequest: 1,
+    retryStrategy: () => null,
+    lazyConnect: true,
   })
+  redis.on('error', () => {}) // Suppress connection errors
+  await redis.connect()
   await redis.ping()
 }
 
