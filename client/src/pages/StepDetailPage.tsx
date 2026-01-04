@@ -528,8 +528,8 @@ function ArtifactCard({
         </span>
       </div>
       
-      <div className={`overflow-hidden transition-all duration-200 ${isExpanded ? 'max-h-[600px]' : 'max-h-28'}`}>
-        <pre className={`px-4 py-3 text-xs font-mono overflow-auto whitespace-pre-wrap break-words ${
+      <div className={`transition-all duration-200 ${isExpanded ? 'max-h-[500px] overflow-auto' : 'max-h-28 overflow-hidden'}`}>
+        <pre className={`px-4 py-3 text-xs font-mono whitespace-pre-wrap break-words ${
           isTextContent ? 'text-xray-text leading-relaxed' : 'text-xray-muted'
         }`}>
           {isExpanded ? displayContent : preview}

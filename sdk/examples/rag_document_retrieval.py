@@ -239,6 +239,7 @@ def embed_query(query: str) -> list[float]:
 @xray.step("RETRIEVE")
 def vector_search(query_embedding: list[float], top_k: int = 100) -> list[dict]:
     """Search documents using vector similarity."""
+    xray.set_input_count(len(DOCUMENTS))  # The corpus size, not the embedding
     xray.metric("index_size", len(DOCUMENTS))
     xray.metric("top_k", top_k)
     
@@ -434,20 +435,20 @@ if __name__ == "__main__":
     print("RAG Document Retrieval Pipeline Demo")
     print("=" * 70)
     
-    # Run sample queries
-    for sample in SAMPLE_QUERIES[:5]:
-        query = sample["query"]
-        print(f"\n❓ Query: {query}")
-        print("-" * 50)
-        
-        result = answer_question(query, max_context_tokens=2000)
-        
-        print(f"📝 Answer preview:")
-        print(f"   {result['answer'][:200]}...")
-        print(f"\n📚 Citations ({len(result['citations'])}):")
-        for cite in result['citations'][:3]:
-            print(f"   - {cite['title']}")
-        print(f"\n🎯 Confidence: {result['confidence']:.0%}")
+    # Run one sample query
+    sample = random.choice(SAMPLE_QUERIES)
+    query = sample["query"]
+    print(f"\n❓ Query: {query}")
+    print("-" * 50)
+    
+    result = answer_question(query, max_context_tokens=2000)
+    
+    print(f"📝 Answer preview:")
+    print(f"   {result['answer'][:200]}...")
+    print(f"\n📚 Citations ({len(result['citations'])}):")
+    for cite in result['citations'][:3]:
+        print(f"   - {cite['title']}")
+    print(f"\n🎯 Confidence: {result['confidence']:.0%}")
     
     print("\n" + "=" * 70)
     print("✅ Done! Check http://localhost:3000 for detailed traces")

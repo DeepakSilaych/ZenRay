@@ -244,6 +244,7 @@ class StepContext:
         from xray.models import CandidateSetData, CaptureMode
         from xray.config import get_config
         from collections import Counter
+        import json
         
         mode = CaptureMode.TOP_K
         top_k = get_config().top_k
@@ -262,9 +263,9 @@ class StepContext:
         if self._scores:
             data.score_histogram = self._build_score_histogram()
         
-        # Top kept (from output)
+        # Top kept (from output) - serialize to ensure clean dicts
         if self._output_items:
-            data.top_kept = self._output_items[:top_k]
+            data.top_kept = [self._serialize_item(c) for c in self._output_items[:top_k]]
         
         # Top dropped
         if self._input_items and self._output_items:
@@ -274,7 +275,7 @@ class StepContext:
                 # Sort by score if available
                 if self._scores:
                     dropped.sort(key=lambda c: self._scores.get(self._get_id(c), 0), reverse=True)
-                data.top_dropped = dropped[:top_k]
+                data.top_dropped = [self._serialize_item(c) for c in dropped[:top_k]]
         
         # Dropped by reason
         if self._drops and self._input_items:
@@ -317,9 +318,25 @@ class StepContext:
             cid = self._get_id(c)
             if cid not in output_ids and cid in self._drops:
                 reason = self._drops[cid]
-                result.setdefault(reason, []).append(c)
+                result.setdefault(reason, []).append(self._serialize_item(c))
         
         return result if result else None
+    
+    def _serialize_item(self, item: Any) -> dict:
+        """Serialize an item to a clean dict for Pydantic."""
+        import json
+        if isinstance(item, dict):
+            # Round-trip through JSON to ensure clean serialization
+            try:
+                return json.loads(json.dumps(item, default=str))
+            except (TypeError, ValueError):
+                return {"id": self._get_id(item), "_serialization_error": True}
+        if hasattr(item, "__dict__"):
+            try:
+                return json.loads(json.dumps(item.__dict__, default=str))
+            except (TypeError, ValueError):
+                return {"id": self._get_id(item), "_serialization_error": True}
+        return {"value": str(item)}
     
     def _get_id(self, item: Any) -> str:
         """Extract ID from an item."""

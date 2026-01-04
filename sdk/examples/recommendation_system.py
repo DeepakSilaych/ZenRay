@@ -525,8 +525,8 @@ if __name__ == "__main__":
     print("Movie Recommendation System Demo")
     print("=" * 70)
     
-    # Sample recommendations for different users
-    test_users = random.sample(USERS, 5)
+    # Sample one user for demo
+    test_users = random.sample(USERS, 1)
     
     for user in test_users:
         print(f"\n👤 User: {user['id']}")

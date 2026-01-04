@@ -82,16 +82,23 @@ Span based tracing improves latency visibility, but it does not directly represe
 
 ```mermaid
 flowchart LR
-  SDK["SDK"] --> IN["Ingest API\nPOST /ingest"]
-  UI["Web UI"] --> Q["Query API\nGET /runs, /steps, /compare, /trace"]
+  SDK["SDK"] --> IN["Ingest API
+  POST /ingest"]
+  UI["Web UI"] --> Q["Query API
+  GET /runs, /steps, /compare, /trace"]
 
   subgraph Server["Server internals"]
-    IN --> QUEUE["Redis queue\ningest buffer"]
-    QUEUE --> WORKER["Background worker\nflush pipeline"]
-    WORKER --> DB[("PostgreSQL\nruns, steps, artifact index")]
-    WORKER --> BLOB[("MinIO or S3\ncandidate sets and artifacts")]
+    IN --> QUEUE["Redis queue
+    ingest buffer"]
+    QUEUE --> WORKER["Background worker
+    flush pipeline"]
+    WORKER --> DB[("PostgreSQL
+    runs, steps, artifact index")]
+    WORKER --> BLOB[("MinIO or S3
+    candidate sets and artifacts")]
 
-    Q --> CACHE["Redis cache\nquery cache"]
+    Q --> CACHE["Redis cache
+    query cache"]
     CACHE --> DB
     Q --> DB
     Q --> BLOB
