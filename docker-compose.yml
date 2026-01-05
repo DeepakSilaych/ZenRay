@@ -1,9 +1,8 @@
-version: '3.8'
-
 services:
+  # Infrastructure Services
   postgres:
     image: postgres:16-alpine
-    container_name: xray-postgres
+    container_name: zenray-postgres
     environment:
       POSTGRES_USER: xray
       POSTGRES_PASSWORD: xray_secret
@@ -17,10 +16,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - zenray-network
 
   minio:
     image: minio/minio:latest
-    container_name: xray-minio
+    container_name: zenray-minio
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: minioadmin
@@ -35,10 +36,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - zenray-network
 
   redis:
     image: redis:7-alpine
-    container_name: xray-redis
+    container_name: zenray-redis
     ports:
       - "6379:6379"
     volumes:
@@ -48,11 +51,13 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - zenray-network
 
   # MinIO bucket initialization
   minio-init:
     image: minio/mc:latest
-    container_name: xray-minio-init
+    container_name: zenray-minio-init
     depends_on:
       minio:
         condition: service_healthy
@@ -63,9 +68,71 @@ services:
       mc anonymous set download myminio/xray-blobs;
       echo 'Bucket created successfully';
       "
+    networks:
+      - zenray-network
+
+  # FastAPI Server
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: zenray-server
+    environment:
+      XRAY_POSTGRES_HOST: postgres
+      XRAY_POSTGRES_PORT: 5432
+      XRAY_POSTGRES_USER: xray
+      XRAY_POSTGRES_PASSWORD: xray_secret
+      XRAY_POSTGRES_DB: xray
+      XRAY_S3_ENDPOINT: http://minio:9000
+      XRAY_S3_ACCESS_KEY: minioadmin
+      XRAY_S3_SECRET_KEY: minioadmin
+      XRAY_S3_BUCKET: xray-blobs
+      XRAY_REDIS_HOST: redis
+      XRAY_REDIS_PORT: 6379
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - zenray-network
+    restart: unless-stopped
+
+  # React Dashboard
+  mainapp:
+    build:
+      context: ./mainapp
+      dockerfile: Dockerfile
+    container_name: zenray-dashboard
+    ports:
+      - "5173:5173"
+    depends_on:
+      - server
+    networks:
+      - zenray-network
+    restart: unless-stopped
+
+  # Astro Website
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: zenray-web
+    ports:
+      - "4000:4000"
+    networks:
+      - zenray-network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
   minio_data:
   redis_data:
 
+networks:
+  zenray-network:
+    driver: bridge
