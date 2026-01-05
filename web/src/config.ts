@@ -1,4 +1,4 @@
-// X-Ray Web Configuration
+// ZenRay Web Configuration
 // Update these values for your deployment
 
 export const config = {
@@ -12,6 +12,6 @@ export const config = {
   dashboardUrl: "http://localhost:3000",
 
   // Site metadata
-  siteName: "X-Ray",
-  siteDescription: "The observability layer for ML pipelines",
+  siteName: "ZenRay",
+  siteDescription: "ZenRay is the observability layer for ML pipelines",
 } as const;

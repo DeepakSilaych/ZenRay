@@ -8,9 +8,10 @@ export default {
       },
       colors: {
         hatchet: {
-          bg: '#050510',
-          surface: '#0a0a14',
-          border: '#1E1E2E',
+          bg: '#0a1029',
+          surface: '#121b40',
+          border: 'rgba(184, 217, 255, 0.08)',
+          text: 'hsl(212, 100%, 86%)',
         },
         navy: {
           950: '#09090b',
@@ -51,7 +52,7 @@ export default {
         },
       },
       backgroundImage: {
-        'grid-pattern': "linear-gradient(to right, #1E1E2E 1px, transparent 1px), linear-gradient(to bottom, #1E1E2E 1px, transparent 1px)",
+        'grid-pattern': "linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px)",
         'shiny-gradient': 'linear-gradient(to right, transparent, rgba(255, 255, 255, 0.1) 50%, transparent)',
       },
       boxShadow: {

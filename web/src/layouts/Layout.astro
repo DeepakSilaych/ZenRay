@@ -15,9 +15,16 @@ const { title } = Astro.props;
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <title>{title}</title>
-  </head>
-  <body class="bg-hatchet-bg text-zinc-100 font-sans antialiased relative min-h-screen overflow-x-hidden selection:bg-accent selection:text-black">
-    <div class="fixed inset-0 z-0 bg-grid-pattern opacity-[0.03] pointer-events-none bg-[length:40px_40px]"></div>
+  <body class="bg-hatchet-bg text-hatchet-text font-sans antialiased relative min-h-screen overflow-x-hidden selection:bg-accent selection:text-black">
+    <!-- Grid Background -->
+    <div class="fixed inset-0 z-0 pointer-events-none">
+      <div class="absolute inset-0 bg-grid-pattern bg-[length:48px_48px] opacity-100"></div>
+      <!-- Radial fade from center -->
+      <div class="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(34,211,238,0.08),transparent)]"></div>
+      <!-- Bottom fade -->
+      <div class="absolute inset-0 bg-gradient-to-t from-[#0a1029] via-transparent to-transparent"></div>
+    </div>
+    
     <div class="relative z-10">
       <slot />
     </div>
@@ -33,7 +40,7 @@ const { title } = Astro.props;
   
   body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background-color: #050510;
+    background-color: #0a1029;
     color: #fafafa;
   }
 

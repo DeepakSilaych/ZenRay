@@ -27,7 +27,7 @@ const useCases = [
     title: "RAG Pipelines",
     subtitle: "Debug retrieval and context selection",
     desc: "Track document retrieval, reranking, and filtering. See exactly which documents made it to your LLM context and which were dropped.",
-    quote: "X-Ray helped us identify why our RAG pipeline was missing relevant documents. Found the issue in 10 minutes.",
+    quote: "ZenRay helped us identify why our RAG pipeline was missing relevant documents. Found the issue in 10 minutes.",
     author: "ML Engineer",
     company: "Series B Startup",
     code: `@xray.pipeline("rag")
@@ -118,164 +118,212 @@ const howItWorks = [
 ];
 ---
 
-<Layout title="X-Ray | ML Pipeline Observability">
+<Layout title="ZenRay | ML Pipeline Observability">
   <Nav />
   
   <!-- Hero Section -->
   <section class="pt-32 pb-20 relative overflow-hidden">
-    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-accent/10 via-hatchet-bg/0 to-hatchet-bg/0 pointer-events-none"></div>
-    <div class="max-w-5xl mx-auto px-6 text-center relative z-10">
-      <h1 class="text-5xl md:text-7xl font-bold leading-[1.1] mb-6 tracking-tight text-white">
-        The observability layer<br />for ML pipelines
+    <div class="max-w-6xl mx-auto px-6 text-center relative z-10">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold mb-8 animate-fade-in uppercase tracking-widest">
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
+        </span>
+        Now in Public Beta
+      </div>
+      
+      <h1 class="text-4xl md:text-5xl font-black leading-[1.05] mb-5 tracking-tight text-white text-center">
+        The <span class="text-accent">observability layer</span><br />for ML pipelines
       </h1>
       
-      <p class="text-xl text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+      <p class="text-base md:text-lg text-zinc-400 max-w-3xl mx-auto mb-8 leading-relaxed font-medium text-center">
         Stop guessing why your pipeline dropped candidates. Trace every item 
         through retrieval, ranking, and filtering in a single dashboard.
       </p>
       
-      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-5 mb-12">
         <a 
           href={config.dashboardUrl}
-          class="px-6 py-3 bg-accent text-hatchet-bg font-bold rounded-lg hover:bg-accent-light transition-colors shadow-[0_0_20px_rgba(34,211,238,0.3)]"
+          class="group relative px-7 py-3 bg-accent text-navy-950 font-bold rounded-full transition-all hover:scale-105 hover:bg-white"
         >
-          Start for free
+          <span>Start for free</span>
         </a>
         <a 
           href="/docs" 
-          class="px-6 py-3 border border-white/10 text-white font-medium rounded-lg hover:border-accent hover:text-accent transition-colors bg-white/5 backdrop-blur-sm"
+          class="px-7 py-3 border border-zinc-700 text-white font-bold rounded-full hover:bg-white/5 transition-all backdrop-blur-sm"
         >
-          Docs
+          View Documentation
         </a>
       </div>
       
-      <!-- Logos -->
-      <div class="border-t border-white/5 pt-12">
-        <p class="text-sm text-zinc-500 uppercase tracking-widest mb-8">Works with your ML stack</p>
-        <div class="flex flex-wrap items-center justify-center gap-x-12 gap-y-4 opacity-80">
-          {logos.map((logo) => (
-            <span class="text-sm font-medium text-zinc-500">{logo}</span>
-          ))}
+      <!-- Interactive Preview/Code -->
+      <div class="max-w-2xl mx-auto relative group">
+        <div class="relative rounded-xl border border-white/10 bg-navy-900/50 backdrop-blur-xl p-2 shadow-2xl overflow-hidden">
+          <div class="rounded-lg overflow-hidden border border-white/5 bg-[#0A0A0F]">
+          <div class="flex items-center justify-between px-4 py-2.5 border-b border-white/5 bg-white/5">
+            <div class="flex gap-1.5">
+              <div class="w-2.5 h-2.5 rounded-full bg-red-500/50"></div>
+              <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/50"></div>
+              <div class="w-2.5 h-2.5 rounded-full bg-green-500/50"></div>
+            </div>
+            <div class="text-[10px] text-zinc-500 font-mono uppercase tracking-widest">quickstart.py</div>
+            <div class="w-8"></div>
+          </div>
+          <pre class="p-6 text-xs md:text-sm font-mono overflow-x-hidden whitespace-pre-wrap break-words text-zinc-300 leading-relaxed text-left"><code>{`import xray
+
+@xray.pipeline("rag-pipeline")
+def answer(question: str):
+    docs = retrieve(question)      # 100 docs
+    reranked = rerank(docs)        # 100 docs, scored
+    filtered = filter(reranked)    # 5 docs
+    return generate(question, filtered)
+
+@xray.step("FILTER")
+def filter(docs):
+    for doc in docs:
+        if doc.score < 0.3:
+            xray.drop(doc, "low_relevance")
+            continue
+        yield doc`}</code></pre>
         </div>
       </div>
     </div>
   </section>
-  
+
   <!-- Core Principles -->
-  <section class="py-24 border-t border-white/5 bg-hatchet-surface/30">
+  <section class="py-24 relative">
     <div class="max-w-5xl mx-auto px-6">
-      <h2 class="text-3xl md:text-4xl font-bold text-white mb-16 text-center">Core Principles</h2>
+      <div class="text-center mb-14">
+        <h2 class="text-2xl md:text-3xl font-bold text-white mb-4 tracking-tight">Built for performance</h2>
+        <p class="text-sm md:text-base text-zinc-400 max-w-2xl mx-auto">X-Ray provides deep visibility into your ML stack without compromising on speed or DX.</p>
+      </div>
       
-      <div class="grid md:grid-cols-3 gap-12">
+      <div class="grid md:grid-cols-3 gap-8">
         {principles.map((p) => (
-          <div>
-            <h3 class="text-lg font-semibold mb-3 text-white">{p.title}</h3>
-            <p class="text-zinc-400 leading-relaxed text-sm">{p.desc}</p>
+          <div class="p-6 rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-sm hover:bg-white/[0.05] transition-all group">
+            <div class="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center mb-4 border border-accent/20 group-hover:scale-110 transition-transform">
+              {p.title === "Visibility" && (
+                <svg class="w-6 h-6 text-accent" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.644C3.399 8.049 7.31 5 12 5c4.69 0 8.601 3.049 9.964 6.678.08.214.08.436 0 .644-1.364 3.629-5.274 6.678-9.964 6.678-4.69 0-8.601-3.049-9.964-6.678z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+              )}
+              {p.title === "Performance" && (
+                <svg class="w-6 h-6 text-accent" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/>
+                </svg>
+              )}
+              {p.title === "Code-First" && (
+                <svg class="w-6 h-6 text-accent" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/>
+                </svg>
+              )}
+            </div>
+            <h3 class="text-lg font-bold mb-3 text-white">{p.title}</h3>
+            <p class="text-sm text-zinc-400 leading-relaxed">{p.desc}</p>
           </div>
         ))}
       </div>
     </div>
   </section>
-  
+
   <!-- Use Cases -->
-  {useCases.map((uc, index) => (
-    <section class="py-24 border-t border-white/5">
-      <div class="max-w-6xl mx-auto px-6">
-        <div class="grid lg:grid-cols-2 gap-16 items-start">
-          <!-- Left: Content -->
-          <div>
-            <p class="text-sm font-medium uppercase tracking-widest mb-4 text-accent">Use Case</p>
-            <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">{uc.title}</h2>
-            <p class="text-lg text-zinc-400 mb-8">{uc.subtitle}</p>
-            
-            <div class="mb-8">
-              <h4 class="text-white font-semibold mb-3">Debug with X-Ray</h4>
-              <p class="text-zinc-400 leading-relaxed mb-6">{uc.desc}</p>
-              
-              <ul class="space-y-2 mb-6">
-                <li class="text-zinc-400 text-sm"><span class="text-accent mr-2">•</span> Which documents were retrieved but filtered out</li>
-                <li class="text-zinc-400 text-sm"><span class="text-accent mr-2">•</span> Relevance scores and drop reasons</li>
-                <li class="text-zinc-400 text-sm"><span class="text-accent mr-2">•</span> Prompts sent to the LLM and responses</li>
-              </ul>
-            </div>
-            
-            <!-- Testimonial -->
-            <div class="border-l-2 border-accent/50 pl-6">
-              <p class="text-zinc-300 mb-4 text-sm">"{uc.quote}"</p>
-              <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center text-black font-bold text-xs bg-accent">
-                  {uc.author[0]}
-                </div>
-                <div>
-                  <p class="text-white font-medium text-sm">{uc.author}</p>
-                  <p class="text-zinc-500 text-xs">{uc.company}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Right: Code -->
-          <div class="rounded-lg border border-white/10 overflow-hidden bg-[#0A0A0F]">
-            <div class="flex items-center gap-2 px-4 py-2.5 border-b border-white/5 bg-white/5">
-              <div class="flex gap-1.5">
-                <div class="w-2.5 h-2.5 rounded-full bg-zinc-600"></div>
-                <div class="w-2.5 h-2.5 rounded-full bg-zinc-600"></div>
-                <div class="w-2.5 h-2.5 rounded-full bg-zinc-600"></div>
-              </div>
-              <span class="ml-2 text-xs text-zinc-500 font-mono">{uc.id}.py</span>
-            </div>
-            <pre class="p-5 text-xs font-mono overflow-x-auto text-zinc-300 leading-relaxed"><code>{uc.code}</code></pre>
-          </div>
-        </div>
+  <section class="py-24">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="text-center mb-16">
+        <h2 class="text-2xl md:text-4xl font-bold text-white mb-4 tracking-tight">Instrument any pattern</h2>
+        <p class="text-base text-zinc-400 max-w-2xl mx-auto">Native support for the most common ML pipeline architectures.</p>
       </div>
-    </section>
-  ))}
-  
-  <!-- How it works -->
-  <section class="py-24 border-t border-white/5 bg-hatchet-surface/30">
-    <div class="max-w-5xl mx-auto px-6">
-      <h2 class="text-3xl md:text-4xl font-bold text-white text-center mb-6">How it works</h2>
-      <p class="text-zinc-400 text-center max-w-2xl mx-auto mb-16 text-sm">
-        X-Ray runs as a separate service. Your pipeline sends data via the SDK, and you debug in the dashboard.
-      </p>
-      
-      <div class="grid md:grid-cols-3 gap-12">
-        {howItWorks.map((item) => (
-          <div>
-            <div class="text-sm font-medium text-accent mb-3">{item.step}</div>
-            <h3 class="text-lg font-semibold text-white mb-2">{item.title}</h3>
-            <p class="text-zinc-400 text-sm leading-relaxed">{item.desc}</p>
+
+      <div class="space-y-32">
+        {useCases.map((uc, index) => (
+          <div class={`flex flex-col lg:flex-row gap-10 items-center ${index % 2 === 1 ? 'lg:flex-row-reverse' : ''}`}>
+            <!-- Left: Content -->
+            <div class="flex-1 max-w-2xl text-left">
+              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold mb-6 uppercase tracking-widest">
+                {uc.title}
+              </div>
+              <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-4 tracking-tight">{uc.subtitle}</h2>
+              <p class="text-sm md:text-base text-zinc-400 leading-relaxed mb-6">{uc.desc}</p>
+              
+              <div class="mb-4"></div>
+
+              <!-- Testimonial -->
+              <div class="relative p-5 rounded-xl border border-white/10 bg-navy-900/40 backdrop-blur-sm shadow-xl max-w-xl">
+                <svg class="absolute top-6 right-8 w-12 h-12 text-white/[0.03]" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M14.017 21L14.017 18C14.017 16.8954 14.9124 16 16.017 16H19.017V13H15.017C13.9124 13 13.017 12.1046 13.017 11V8C13.017 6.89543 13.9124 6 15.017 6H19.017V4H15.017C12.8079 4 11.017 5.79086 11.017 8V11C11.017 11.5523 10.5693 12 10.017 12H7.017C5.91243 12 5.017 12.8954 5.017 14V17C5.017 19.2091 6.80786 21 9.017 21H14.017Z" />
+                </svg>
+                <p class="text-zinc-300 mb-5 italic leading-relaxed font-medium text-left text-sm md:text-base">"{uc.quote}"</p>
+                <div class="flex items-center gap-4">
+                  <div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-navy-950 font-black text-sm">
+                    {uc.author[0]}
+                  </div>
+                  <div>
+                    <p class="text-white font-bold text-sm">{uc.author}</p>
+                    <p class="text-zinc-500 text-xs font-medium uppercase tracking-wider">{uc.company}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Right: Code -->
+            <div class="flex-1 w-full max-w-xl rounded-xl border border-white/10 overflow-hidden bg-[#0A0A0F] shadow-2xl relative group text-left">
+              <div class="flex items-center gap-2 px-4 py-2.5 border-b border-white/5 bg-white/5 relative z-10">
+                <div class="flex gap-1.5">
+                  <div class="w-2.5 h-2.5 rounded-full bg-zinc-700"></div>
+                  <div class="w-2.5 h-2.5 rounded-full bg-zinc-700"></div>
+                  <div class="w-2.5 h-2.5 rounded-full bg-zinc-700"></div>
+                </div>
+                <span class="ml-3 text-[9px] text-zinc-500 font-mono uppercase tracking-[0.18em]">{uc.id}.py</span>
+              </div>
+              <pre class="p-5 text-xs md:text-sm font-mono overflow-x-hidden whitespace-pre-wrap break-words text-zinc-300 leading-relaxed relative z-10"><code>{uc.code}</code></pre>
+            </div>
           </div>
         ))}
       </div>
     </div>
   </section>
-  
+
   <!-- CTA -->
-  <section class="py-24 border-t border-white/5">
-    <div class="max-w-4xl mx-auto px-6 text-center">
-      <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">
-        Start debugging your pipelines today
+  <section class="py-28 relative overflow-hidden">
+    <div class="max-w-4xl mx-auto px-6 text-center relative z-10">
+      <h2 class="text-3xl md:text-4xl font-black text-white mb-5 tracking-tight leading-tight">
+        Ready to see<br />under the hood?
       </h2>
-      <p class="text-zinc-400 mb-8 text-sm max-w-xl mx-auto">
-        Fully managed. Add to your project in under 5 minutes.
+      <p class="text-base text-zinc-400 mb-8 max-w-2xl mx-auto font-medium leading-relaxed">
+        Join hundreds of engineers building more reliable ML systems with X-Ray. 
+        Free to start, pay only as you scale.
       </p>
-      <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-6">
         <a 
-          href="/docs" 
-          class="px-6 py-3 bg-accent text-hatchet-bg font-bold rounded-lg hover:bg-accent-light transition-colors shadow-[0_0_20px_rgba(34,211,238,0.3)]"
+          href={config.dashboardUrl}
+          class="px-8 py-4 bg-accent text-navy-950 font-black rounded-full hover:scale-105 hover:shadow-[0_0_30px_rgba(34,211,238,0.4)] transition-all text-base"
         >
-          Get Started
+          Start Debugging Now
         </a>
         <a 
           href={config.githubUrl}
-          class="px-6 py-3 border border-white/10 text-white font-medium rounded-lg hover:border-accent hover:text-accent transition-colors bg-white/5 backdrop-blur-sm"
+          class="flex items-center gap-2.5 px-8 py-4 border border-white/10 text-white font-bold rounded-full hover:bg-white/5 transition-all backdrop-blur-sm text-base"
         >
+          <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+          </svg>
           Star on GitHub
         </a>
       </div>
     </div>
   </section>
-  
+
   <Footer />
 </Layout>
+
+<style is:global>
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.8s ease-out forwards;
+  }
+</style>
