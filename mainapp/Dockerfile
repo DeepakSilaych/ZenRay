@@ -13,7 +13,6 @@ COPY . .
 
 EXPOSE 5173
 
-# Use dev server for development (with hot reload)
-# For production, uncomment the build step and use preview
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+# Use dev server - Caddy will handle host rewriting
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173", "--", "--disable-host-check"]
 

@@ -37,3 +37,7 @@ data/
 .env.*
 !.env.example
 
+
+
+# Caddy
+Caddyfile
