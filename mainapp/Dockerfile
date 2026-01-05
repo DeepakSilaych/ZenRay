@@ -11,8 +11,10 @@ RUN npm install
 # Copy source code (node_modules excluded via .dockerignore)
 COPY . .
 
-EXPOSE 5174
+# Port from env (default 4002)
+ARG PORT=4002
+ENV DASHBOARD_PORT=${PORT}
+EXPOSE ${PORT}
 
-# Use dev server - Caddy will handle host rewriting
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5174", "--", "--disable-host-check"]
-
+# Use dev server
+CMD npm run dev -- --host 0.0.0.0 --port ${DASHBOARD_PORT:-4002}

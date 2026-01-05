@@ -1,48 +1,55 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+export default defineConfig(({ mode }) => {
+  // Load env from parent directory
+  const env = loadEnv(mode, path.resolve(__dirname, '..'), '')
+  
+  const dashboardPort = parseInt(env.DASHBOARD_PORT || '4002')
+  const serverPort = parseInt(env.SERVER_PORT || '4003')
+  
+  return {
+    plugins: [react()],
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+      },
     },
-  },
-  server: {
-    host: '0.0.0.0',
-    port: 5174,
-    strictPort: false,
-    allowedHosts: [
-      'zenray.live',
-      'app.zenray.live',
-      'api.zenray.live',
-      'localhost',
-      '127.0.0.1',
-      '.zenray.live'
-    ],
-    hmr: {
-      clientPort: 443
-    },
-    proxy: {
-      '/api/': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+    server: {
+      host: '0.0.0.0',
+      port: dashboardPort,
+      strictPort: false,
+      allowedHosts: [
+        'zenray.live',
+        'app.zenray.live',
+        'api.zenray.live',
+        'localhost',
+        '127.0.0.1',
+        '.zenray.live'
+      ],
+      hmr: {
+        clientPort: 443
+      },
+      proxy: {
+        '/api/': {
+          target: `http://localhost:${serverPort}`,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api/, '')
+        }
       }
+    },
+    preview: {
+      host: '0.0.0.0',
+      port: dashboardPort,
+      allowedHosts: [
+        'zenray.live',
+        'app.zenray.live',
+        'api.zenray.live',
+        'localhost',
+        '127.0.0.1',
+        '.zenray.live'
+      ]
     }
-  },
-  preview: {
-    host: '0.0.0.0',
-    port: 5174,
-    allowedHosts: [
-      'zenray.live',
-      'app.zenray.live',
-      'api.zenray.live',
-      'localhost',
-      '127.0.0.1',
-      '.zenray.live'  // Allow all subdomains
-    ]
   }
 })
-

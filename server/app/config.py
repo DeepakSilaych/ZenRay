@@ -1,7 +1,7 @@
 """
 Application configuration via environment variables.
 
-All settings can be configured via ZENRAY_* or XRAY_* environment variables.
+All settings can be configured via XRAY_* environment variables.
 """
 from functools import lru_cache
 from typing import Optional
@@ -18,6 +18,11 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+    
+    # Server
+    port: int = 4003
+    debug: bool = False
+    log_level: str = "INFO"
     
     # PostgreSQL
     postgres_host: str = "localhost"
@@ -46,11 +51,7 @@ class Settings(BaseSettings):
     # Google OAuth
     google_client_id: Optional[str] = None
     google_client_secret: Optional[str] = None
-    frontend_url: str = "http://localhost:5174"
-    
-    # Server
-    debug: bool = False
-    log_level: str = "INFO"
+    frontend_url: str = "http://localhost:4002"
     
     @property
     def postgres_url(self) -> str:

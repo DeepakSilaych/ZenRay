@@ -22,9 +22,10 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/astro.config.mjs ./
-COPY --from=builder /app/vite.config.js ./
 
-EXPOSE 4000
+# Port from env (default 4001)
+ARG PORT=4001
+ENV WEB_PORT=${PORT}
+EXPOSE ${PORT}
 
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "4000"]
-
+CMD npm run preview -- --host 0.0.0.0 --port ${WEB_PORT:-4001}

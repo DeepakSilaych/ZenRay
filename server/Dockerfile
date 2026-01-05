@@ -16,8 +16,10 @@ RUN pip install --no-cache-dir .
 # Copy application code
 COPY app/ ./app/
 
-# Expose port
-EXPOSE 8000
+# Port from env (default 4003)
+ARG PORT=4003
+ENV XRAY_PORT=${PORT}
+EXPOSE ${PORT}
 
-# Run server
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run server with port from env
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${XRAY_PORT:-4003}
