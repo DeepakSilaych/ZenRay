@@ -6,7 +6,7 @@ export const config = {
   apiUrl: "https://api.xray.dev",
 
   // GitHub Repository URL
-  githubUrl: "https://github.com/xray-dev/xray",
+  githubUrl: "https://github.com/DeepakSilaych/ZenRay",
 
   // Dashboard URL
   dashboardUrl: "http://localhost:3000",

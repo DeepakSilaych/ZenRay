@@ -12,7 +12,8 @@
   <a href="#why-zenray">Why ZenRay</a> •
   <a href="#what-you-get">What You Get</a> •
   <a href="#use-cases">Use Cases</a> •
-  <a href="#getting-started">Get Started</a>
+  <a href="#getting-started">Get Started</a> •
+  <a href="https://github.com/DeepakSilaych/ZenRay">GitHub</a>
 </p>
 
 <p align="center">

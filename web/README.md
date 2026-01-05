@@ -99,7 +99,7 @@ Edit `src/config.ts` to update site-wide settings:
 export const config = {
   siteName: "ZenRay",
   siteDescription: "The observability layer for ML pipelines",
-  githubUrl: "https://github.com/your-org/zenray",
+  githubUrl: "https://github.com/DeepakSilaych/ZenRay",
   dashboardUrl: "https://app.zenray.dev",
   apiUrl: "https://api.zenray.dev",
 };
