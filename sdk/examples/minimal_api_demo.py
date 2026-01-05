@@ -136,7 +136,7 @@ def call_llm(product: dict) -> str:
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("X-Ray Minimal API Demo")
+    print("ZenRay Minimal API Demo")
     print("=" * 60)
     
     # Run search pipeline
@@ -167,6 +167,6 @@ if __name__ == "__main__":
     print(f"Description: {description}")
     
     print("\n" + "=" * 60)
-    print("Done! Check http://localhost:3000 to view the traces.")
+    print("Done! Check http://localhost:5174 to view the traces.")
     print("=" * 60)
 

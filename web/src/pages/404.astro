@@ -1,0 +1,63 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { config } from '../config';
+---
+
+<Layout title="Page Not Found">
+  <div class="min-h-screen flex items-center justify-center">
+    <div class="text-center px-6">
+      <!-- 404 Number -->
+      <div class="relative">
+        <span class="text-[12rem] font-bold text-navy-800/50 leading-none select-none">
+          404
+        </span>
+        <div class="absolute inset-0 flex items-center justify-center">
+          <div class="w-24 h-24 rounded-full bg-accent/10 flex items-center justify-center">
+            <span class="text-4xl">🔍</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Message -->
+      <h1 class="text-2xl font-semibold text-white mt-4">
+        Page not found
+      </h1>
+      <p class="text-navy-300 mt-2 max-w-md mx-auto">
+        The page you're looking for doesn't exist or has been moved.
+      </p>
+
+      <!-- Actions -->
+      <div class="flex items-center justify-center gap-3 mt-8">
+        <a
+          href="javascript:history.back()"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-navy-700 text-navy-200 hover:bg-navy-800/50 transition-colors"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Go Back
+        </a>
+        <a
+          href="/"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+          Home
+        </a>
+      </div>
+
+      <!-- Links -->
+      <div class="mt-12 pt-8 border-t border-navy-800">
+        <p class="text-navy-400 text-sm mb-4">Looking for something?</p>
+        <div class="flex items-center justify-center gap-6 text-sm">
+          <a href="/docs" class="text-accent hover:underline">Documentation</a>
+          <a href={config.githubUrl} class="text-accent hover:underline">GitHub</a>
+          <a href="/" class="text-accent hover:underline">Home</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+

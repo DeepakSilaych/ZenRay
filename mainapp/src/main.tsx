@@ -11,6 +11,7 @@ import ComparePage from './pages/ComparePage'
 import LoginPage from './pages/LoginPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import ApiKeysPage from './pages/ApiKeysPage'
+import NotFoundPage from './pages/NotFoundPage'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -34,6 +35,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="compare" element={<ComparePage />} />
             <Route path="api-keys" element={<ApiKeysPage />} />
           </Route>
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
