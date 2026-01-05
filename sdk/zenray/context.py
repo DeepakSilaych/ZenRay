@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Optional, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from xray.models import RunData, StepData
+    from zenray.models import RunData, StepData
 
 # Context variables for tracking active run/step
 _current_run: ContextVar[Optional["RunContext"]] = ContextVar("xray_run", default=None)
@@ -39,9 +39,9 @@ class RunContext:
     
     def _start(self, input_args: tuple = (), input_kwargs: dict = None):
         """Start the run and send start event."""
-        from xray.models import RunData, RunStatus
-        from xray.client import get_client
-        from xray.config import is_enabled
+        from zenray.models import RunData, RunStatus
+        from zenray.client import get_client
+        from zenray.config import is_enabled
         
         # Capture input summary from first positional arg if dict-like
         if input_args and hasattr(input_args[0], "__dict__"):
@@ -65,9 +65,9 @@ class RunContext:
     
     def _end(self, result: Any = None):
         """End the run successfully."""
-        from xray.models import RunData, RunStatus
-        from xray.client import get_client
-        from xray.config import is_enabled
+        from zenray.models import RunData, RunStatus
+        from zenray.client import get_client
+        from zenray.config import is_enabled
         
         self.final_output = self._summarize_output(result)
         
@@ -89,9 +89,9 @@ class RunContext:
     
     def _fail(self, error: Exception):
         """End the run with failure."""
-        from xray.models import RunData, RunStatus
-        from xray.client import get_client
-        from xray.config import is_enabled
+        from zenray.models import RunData, RunStatus
+        from zenray.client import get_client
+        from zenray.config import is_enabled
         
         if not is_enabled():
             return
@@ -160,9 +160,9 @@ class StepContext:
     
     def _end(self, result: Any = None):
         """End the step, capture output."""
-        from xray.models import StepData, StepStatus, StepKind, CandidateSetData, CaptureMode, ArtifactData, ArtifactType
-        from xray.client import get_client
-        from xray.config import is_enabled
+        from zenray.models import StepData, StepStatus, StepKind, CandidateSetData, CaptureMode, ArtifactData, ArtifactType
+        from zenray.client import get_client
+        from zenray.config import is_enabled
         
         ended_at = datetime.utcnow()
         duration_ms = int((ended_at - self.started_at).total_seconds() * 1000)
@@ -213,9 +213,9 @@ class StepContext:
     
     def _fail(self, error: Exception):
         """End the step with failure."""
-        from xray.models import StepData, StepStatus, StepKind
-        from xray.client import get_client
-        from xray.config import is_enabled
+        from zenray.models import StepData, StepStatus, StepKind
+        from zenray.client import get_client
+        from zenray.config import is_enabled
         
         ended_at = datetime.utcnow()
         duration_ms = int((ended_at - self.started_at).total_seconds() * 1000)
@@ -241,8 +241,8 @@ class StepContext:
     
     def _build_candidate_set(self):
         """Build candidate set data from recorded information."""
-        from xray.models import CandidateSetData, CaptureMode
-        from xray.config import get_config
+        from zenray.models import CandidateSetData, CaptureMode
+        from zenray.config import get_config
         from collections import Counter
         import json
         

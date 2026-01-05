@@ -7,9 +7,11 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy project files
+COPY pyproject.toml README.md ./
+
+# Install Python dependencies
+RUN pip install --no-cache-dir .
 
 # Copy application code
 COPY app/ ./app/
@@ -17,6 +19,5 @@ COPY app/ ./app/
 # Expose port
 EXPOSE 8000
 
-# Run the application
+# Run server
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-

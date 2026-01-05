@@ -2,9 +2,9 @@ import uuid
 from datetime import datetime
 from typing import Optional, Any
 
-from xray.models import StepData, StepStatus, StepKind, ArtifactData, ArtifactType
-from xray.client import get_client
-from xray.candidates import CandidateSet
+from zenray.models import StepData, StepStatus, StepKind, ArtifactData, ArtifactType
+from zenray.client import get_client
+from zenray.candidates import CandidateSet
 
 class Step:
     """Context manager for instrumenting a pipeline step."""

@@ -12,7 +12,6 @@ venv/
 *.log
 .git
 .gitignore
-README.md
 .vscode
 .idea
-
+tests/

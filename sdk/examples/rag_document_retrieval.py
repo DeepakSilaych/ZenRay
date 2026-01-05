@@ -11,13 +11,13 @@ A comprehensive Retrieval-Augmented Generation pipeline with:
 
 Run: python examples/rag_document_retrieval.py
 """
-import xray
+import zenray
 import random
 import math
 import hashlib
 from datetime import datetime, timedelta
 
-xray.init()
+zenray.init()
 
 # =============================================================================
 # DATASET: 200+ Documents
@@ -172,7 +172,7 @@ SAMPLE_QUERIES = [
 # RAG PIPELINE
 # =============================================================================
 
-@xray.pipeline("rag-document-qa", version="v3.0.0")
+@zenray.pipeline("rag-document-qa", version="v3.0.0")
 def answer_question(query: str, max_context_tokens: int = 2000) -> dict:
     """
     Full RAG pipeline for document Q&A.
@@ -185,8 +185,8 @@ def answer_question(query: str, max_context_tokens: int = 2000) -> dict:
     5. Optimize context window
     6. Generate response with LLM
     """
-    xray.tag("query_type", classify_query(query))
-    xray.tag("max_tokens", str(max_context_tokens))
+    zenray.tag("query_type", classify_query(query))
+    zenray.tag("max_tokens", str(max_context_tokens))
     
     # Embed the query
     query_embedding = embed_query(query)
@@ -221,27 +221,27 @@ def classify_query(query: str) -> str:
     return "general"
 
 
-@xray.step("LLM_CALL")
+@zenray.step("LLM_CALL")
 def embed_query(query: str) -> list[float]:
     """Embed the query using an embedding model."""
-    xray.artifact("input", {"query": query})
-    xray.metric("model", "text-embedding-3-large")
-    xray.metric("dimensions", 384)
+    zenray.artifact("input", {"query": query})
+    zenray.metric("model", "text-embedding-3-large")
+    zenray.metric("dimensions", 384)
     
     # Simulate embedding (in reality, call OpenAI/Cohere/etc.)
     embedding = [random.gauss(0, 1) for _ in range(384)]
     
-    xray.artifact("output", {"embedding_norm": sum(e*e for e in embedding)**0.5})
+    zenray.artifact("output", {"embedding_norm": sum(e*e for e in embedding)**0.5})
     
     return embedding
 
 
-@xray.step("RETRIEVE")
+@zenray.step("RETRIEVE")
 def vector_search(query_embedding: list[float], top_k: int = 100) -> list[dict]:
     """Search documents using vector similarity."""
-    xray.set_input_count(len(DOCUMENTS))  # The corpus size, not the embedding
-    xray.metric("index_size", len(DOCUMENTS))
-    xray.metric("top_k", top_k)
+    zenray.set_input_count(len(DOCUMENTS))  # The corpus size, not the embedding
+    zenray.metric("index_size", len(DOCUMENTS))
+    zenray.metric("top_k", top_k)
     
     # Calculate similarity scores
     scored_docs = []
@@ -261,17 +261,17 @@ def vector_search(query_embedding: list[float], top_k: int = 100) -> list[dict]:
     # Sort by similarity
     scored_docs.sort(key=lambda x: x["similarity_score"], reverse=True)
     
-    xray.metric("max_similarity", scored_docs[0]["similarity_score"] if scored_docs else 0)
-    xray.metric("min_similarity", scored_docs[top_k-1]["similarity_score"] if len(scored_docs) >= top_k else 0)
+    zenray.metric("max_similarity", scored_docs[0]["similarity_score"] if scored_docs else 0)
+    zenray.metric("min_similarity", scored_docs[top_k-1]["similarity_score"] if len(scored_docs) >= top_k else 0)
     
     return scored_docs[:top_k]
 
 
-@xray.step("RANK")
+@zenray.step("RANK")
 def rerank_documents(candidates: list[dict], query: str) -> list[dict]:
     """Rerank documents using cross-encoder simulation."""
-    xray.metric("model", "cross-encoder-ms-marco")
-    xray.metric("candidates_count", len(candidates))
+    zenray.metric("model", "cross-encoder-ms-marco")
+    zenray.metric("candidates_count", len(candidates))
     
     query_terms = set(query.lower().split())
     
@@ -302,12 +302,12 @@ def rerank_documents(candidates: list[dict], query: str) -> list[dict]:
         )
         
         doc["rerank_score"] = round(rerank_score, 4)
-        xray.score(doc, rerank_score)
+        zenray.score(doc, rerank_score)
     
     return sorted(candidates, key=lambda x: x["rerank_score"], reverse=True)
 
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def filter_low_quality(candidates: list[dict]) -> list[dict]:
     """Filter out low-quality documents."""
     kept = []
@@ -315,36 +315,36 @@ def filter_low_quality(candidates: list[dict]) -> list[dict]:
     for doc in candidates:
         # Quality threshold
         if doc["quality_score"] < 0.6:
-            xray.drop(doc, "low_quality_score")
+            zenray.drop(doc, "low_quality_score")
             continue
         
         # Rerank score threshold
         if doc["rerank_score"] < 0.2:
-            xray.drop(doc, "low_rerank_score")
+            zenray.drop(doc, "low_rerank_score")
             continue
         
         # Too old (over 1 year)
         days_old = (datetime.now() - datetime.fromisoformat(doc["created_at"])).days
         if days_old > 365:
-            xray.drop(doc, "too_old")
+            zenray.drop(doc, "too_old")
             continue
         
         # Too short
         if doc["word_count"] < 50:
-            xray.drop(doc, "too_short")
+            zenray.drop(doc, "too_short")
             continue
         
         kept.append(doc)
     
-    xray.metric("filter_rate", 1 - len(kept) / len(candidates) if candidates else 0)
+    zenray.metric("filter_rate", 1 - len(kept) / len(candidates) if candidates else 0)
     
     return kept
 
 
-@xray.step("SELECT")
+@zenray.step("SELECT")
 def optimize_context(candidates: list[dict], max_tokens: int) -> list[dict]:
     """Select documents to fit within context window."""
-    xray.metric("max_tokens", max_tokens)
+    zenray.metric("max_tokens", max_tokens)
     
     selected = []
     total_tokens = 0
@@ -356,12 +356,12 @@ def optimize_context(candidates: list[dict], max_tokens: int) -> list[dict]:
         
         # Check if it fits
         if total_tokens + doc_tokens > max_tokens:
-            xray.drop(doc, "context_window_exceeded")
+            zenray.drop(doc, "context_window_exceeded")
             continue
         
         # Limit per domain for diversity
         if doc["domain"] in domains_seen and len([d for d in selected if d["domain"] == doc["domain"]]) >= 3:
-            xray.drop(doc, "domain_limit_reached")
+            zenray.drop(doc, "domain_limit_reached")
             continue
         
         selected.append(doc)
@@ -372,14 +372,14 @@ def optimize_context(candidates: list[dict], max_tokens: int) -> list[dict]:
         if len(selected) >= 10:
             break
     
-    xray.metric("selected_count", len(selected))
-    xray.metric("total_tokens_used", total_tokens)
-    xray.metric("domains_covered", list(domains_seen))
+    zenray.metric("selected_count", len(selected))
+    zenray.metric("total_tokens_used", total_tokens)
+    zenray.metric("domains_covered", list(domains_seen))
     
     return selected
 
 
-@xray.step("LLM_CALL")
+@zenray.step("LLM_CALL")
 def generate_response(query: str, context_docs: list[dict]) -> dict:
     """Generate response using LLM."""
     # Build context
@@ -397,10 +397,10 @@ Documents:
 
 Provide a comprehensive answer with citations [1], [2], etc."""
 
-    xray.artifact("prompt", prompt)
-    xray.metric("model", "gpt-4-turbo")
-    xray.metric("context_docs", len(context_docs))
-    xray.metric("prompt_tokens", len(prompt.split()))
+    zenray.artifact("prompt", prompt)
+    zenray.metric("model", "gpt-4-turbo")
+    zenray.metric("context_docs", len(context_docs))
+    zenray.metric("prompt_tokens", len(prompt.split()))
     
     # Simulate LLM response
     citations = [f"[{i+1}]" for i in range(min(3, len(context_docs)))]
@@ -416,8 +416,8 @@ cited documents.
 
 Sources: {', '.join([doc['title'] for doc in context_docs[:3]])}"""
     
-    xray.artifact("response", response)
-    xray.metric("response_tokens", len(response.split()))
+    zenray.artifact("response", response)
+    zenray.metric("response_tokens", len(response.split()))
     
     return {
         "answer": response,

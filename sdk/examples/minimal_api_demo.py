@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 """
-Minimal API Demo - X-Ray SDK
+Minimal API Demo - ZenRay SDK
 
-This example shows the new decorator-based API that requires
+This example shows the decorator-based API that requires
 minimal code changes to instrument an existing pipeline.
-
-Compare with competitor_selection.py which uses the verbose context manager API.
 """
-import xray
+import zenray
 
-# Initialize - reads XRAY_ENDPOINT from env, defaults to localhost:8000
-xray.init()
+# Initialize - reads ZENRAY_API_KEY and ZENRAY_ENDPOINT from env
+zenray.init()
 
 # Sample data
 PRODUCTS = [
@@ -27,7 +25,7 @@ PRODUCTS = [
 
 # --- Pipeline Definition (Just decorators!) ---
 
-@xray.pipeline("product-search", version="v2.0")
+@zenray.pipeline("product-search", version="v2.0")
 def search_products(query: str, max_results: int = 5) -> list[dict]:
     """
     Search for products matching a query.
@@ -39,8 +37,8 @@ def search_products(query: str, max_results: int = 5) -> list[dict]:
     4. Return top results
     """
     # Tag the run with query info
-    xray.tag("query", query)
-    xray.tag("max_results", str(max_results))
+    zenray.tag("query", query)
+    zenray.tag("max_results", str(max_results))
     
     # Pipeline steps
     candidates = retrieve_candidates(query)
@@ -50,11 +48,11 @@ def search_products(query: str, max_results: int = 5) -> list[dict]:
     return ranked[:max_results]
 
 
-@xray.step("RETRIEVE")
+@zenray.step("RETRIEVE")
 def retrieve_candidates(query: str) -> list[dict]:
     """Retrieve all potentially matching products."""
     # In real app, this would be a database query
-    xray.metric("source", "mock_db")
+    zenray.metric("source", "mock_db")
     
     # Simple keyword matching
     query_lower = query.lower()
@@ -70,23 +68,23 @@ def retrieve_candidates(query: str) -> list[dict]:
     return matches
 
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def filter_candidates(candidates: list[dict]) -> list[dict]:
     """Filter out inactive and low-rated products."""
     kept = []
     
     for product in candidates:
         if not product["active"]:
-            xray.drop(product, "inactive")
+            zenray.drop(product, "inactive")
         elif product["rating"] < 4.0:
-            xray.drop(product, "low_rating")
+            zenray.drop(product, "low_rating")
         else:
             kept.append(product)
     
     return kept
 
 
-@xray.step("RANK")
+@zenray.step("RANK")
 def rank_by_relevance(candidates: list[dict], query: str) -> list[dict]:
     """Rank products by relevance score."""
     query_lower = query.lower()
@@ -97,7 +95,7 @@ def rank_by_relevance(candidates: list[dict], query: str) -> list[dict]:
         rating_score = product["rating"] / 5.0
         relevance = (name_match * 0.6) + (rating_score * 0.4)
         
-        xray.score(product, relevance)
+        zenray.score(product, relevance)
         product["relevance"] = relevance
     
     return sorted(candidates, key=lambda x: x["relevance"], reverse=True)
@@ -105,22 +103,22 @@ def rank_by_relevance(candidates: list[dict], query: str) -> list[dict]:
 
 # --- LLM Example ---
 
-@xray.pipeline("product-description", version="v1.0")
+@zenray.pipeline("product-description", version="v1.0")
 def generate_description(product: dict) -> str:
     """Generate a marketing description for a product."""
     description = call_llm(product)
     return description
 
 
-@xray.step("LLM_CALL")
+@zenray.step("LLM_CALL")
 def call_llm(product: dict) -> str:
     """Call LLM to generate description (mocked)."""
     prompt = f"Write a short marketing description for: {product['name']}"
     
     # Record prompt as artifact
-    xray.artifact("prompt", prompt)
-    xray.metric("model", "gpt-4")
-    xray.metric("temperature", 0.7)
+    zenray.artifact("prompt", prompt)
+    zenray.metric("model", "gpt-4")
+    zenray.metric("temperature", 0.7)
     
     # Mock LLM response
     response = f"Introducing the {product['name']} - your essential workspace companion. " \
@@ -128,8 +126,8 @@ def call_llm(product: dict) -> str:
                f"product delivers exceptional quality at just ${product['price']}."
     
     # Record response as artifact
-    xray.artifact("response", response)
-    xray.metric("tokens_used", len(response.split()))
+    zenray.artifact("response", response)
+    zenray.metric("tokens_used", len(response.split()))
     
     return response
 

@@ -1,166 +1,140 @@
 # ZenRay Server
 
-FastAPI backend for the ZenRay observability platform.
+Backend API server for ZenRay - the observability layer for ML/LLM pipelines.
 
----
+## Features
 
-## Overview
+- **Ingest API**: Receive telemetry from SDK via REST
+- **Query API**: Search and explore runs, steps, and candidates
+- **Authentication**: Google OAuth + API keys
+- **Async Processing**: Redis queue for high-throughput ingestion
+- **Blob Storage**: MinIO/S3 for candidate sets and artifacts
 
-The server handles:
+## Quick Start
 
-- **Ingestion** — Receives pipeline traces from the Python SDK
-- **Storage** — Persists metadata to PostgreSQL, blobs to MinIO
-- **Caching** — Uses Redis for query caching and ingest queuing
-- **Query API** — Serves the dashboard with run and step data
-
-### Architecture
-
-```
-┌──────────────┐
-│  Ingest API  │──▶ Redis Queue ──▶ Background Worker
-└──────────────┘                           │
-                                           ▼
-┌──────────────┐                    ┌─────────────┐
-│  Query API   │◀───────────────────│  PostgreSQL │
-└──────────────┘                    │    MinIO    │
-                                    └─────────────┘
-```
-
----
-
-## Prerequisites
-
-- Python 3.11+
-- Docker (for PostgreSQL, MinIO, Redis)
-
----
-
-## Setup
-
-### 1. Start Infrastructure
-
-From the project root:
+### With Docker Compose (Recommended)
 
 ```bash
+# From project root
 docker compose up -d
 ```
 
-### 2. Create Virtual Environment
+### Local Development
 
 ```bash
-cd server
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-```
+# Install dependencies
+pip install -e ".[dev]"
 
-### 3. Install Dependencies
+# Set environment variables
+export XRAY_POSTGRES_HOST=localhost
+export XRAY_REDIS_HOST=localhost
+export XRAY_S3_ENDPOINT=http://localhost:9000
 
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Run the Server
-
-```bash
+# Run server
 uvicorn app.main:app --reload --port 8000
 ```
 
-Server will be available at `http://localhost:8000`
+## Configuration
 
----
+All settings via environment variables with `XRAY_` prefix:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `XRAY_POSTGRES_HOST` | localhost | PostgreSQL host |
+| `XRAY_POSTGRES_PORT` | 5432 | PostgreSQL port |
+| `XRAY_POSTGRES_USER` | xray | Database user |
+| `XRAY_POSTGRES_PASSWORD` | xray_secret | Database password |
+| `XRAY_POSTGRES_DB` | xray | Database name |
+| `XRAY_REDIS_HOST` | localhost | Redis host |
+| `XRAY_REDIS_PORT` | 6379 | Redis port |
+| `XRAY_S3_ENDPOINT` | http://localhost:9000 | MinIO/S3 endpoint |
+| `XRAY_S3_ACCESS_KEY` | minioadmin | S3 access key |
+| `XRAY_S3_SECRET_KEY` | minioadmin | S3 secret key |
+| `XRAY_S3_BUCKET` | xray-blobs | S3 bucket name |
+| `XRAY_JWT_SECRET` | (change me) | JWT signing secret |
+| `XRAY_GOOGLE_CLIENT_ID` | - | Google OAuth client ID |
+| `XRAY_GOOGLE_CLIENT_SECRET` | - | Google OAuth secret |
+| `XRAY_FRONTEND_URL` | http://localhost:5174 | Frontend URL for OAuth |
+| `XRAY_DEBUG` | false | Enable debug mode |
 
 ## API Endpoints
 
-### Health Check
+### Ingest (SDK)
 
 ```
-GET /health
+POST /ingest          # Batch ingest runs and steps (requires API key)
+GET  /ingest/stats    # Queue statistics
 ```
 
-Returns server status and queue length.
-
-### Ingest
+### Query (Dashboard)
 
 ```
-POST /ingest/run       # Create a new run
-POST /ingest/step      # Add a step to a run
-POST /ingest/candidates # Add candidates to a step
+GET  /runs            # List runs (requires auth)
+GET  /runs/{id}       # Get run detail
+GET  /runs/{id}/trace # Trace candidate through run
+GET  /steps           # List steps
+GET  /steps/{id}      # Get step detail
+GET  /compare         # Compare two runs
 ```
 
-### Query
+### Auth
 
 ```
-GET /runs              # List all runs
-GET /runs/{run_id}     # Get run details
-GET /runs/{run_id}/steps           # List steps in a run
-GET /runs/{run_id}/steps/{step_id} # Get step details with candidates
+GET  /auth/google/url      # Get Google OAuth URL
+POST /auth/google/callback # Google OAuth callback
+GET  /auth/me              # Current user info
+POST /auth/api-keys        # Create API key
+GET  /auth/api-keys        # List API keys
+DELETE /auth/api-keys/{id} # Delete API key
 ```
 
-### API Documentation
+### System
 
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
-
----
-
-## Configuration
-
-All settings use the `XRAY_` prefix:
-
-| Variable                 | Default               | Description         |
-| ------------------------ | --------------------- | ------------------- |
-| `XRAY_POSTGRES_HOST`     | localhost             | PostgreSQL host     |
-| `XRAY_POSTGRES_PORT`     | 5432                  | PostgreSQL port     |
-| `XRAY_POSTGRES_USER`     | xray                  | PostgreSQL user     |
-| `XRAY_POSTGRES_PASSWORD` | xray_secret           | PostgreSQL password |
-| `XRAY_POSTGRES_DB`       | xray                  | PostgreSQL database |
-| `XRAY_S3_ENDPOINT`       | http://localhost:9000 | MinIO endpoint      |
-| `XRAY_S3_ACCESS_KEY`     | minioadmin            | MinIO access key    |
-| `XRAY_S3_SECRET_KEY`     | minioadmin            | MinIO secret key    |
-| `XRAY_S3_BUCKET`         | xray-blobs            | MinIO bucket name   |
-| `XRAY_REDIS_HOST`        | localhost             | Redis host          |
-| `XRAY_REDIS_PORT`        | 6379                  | Redis port          |
-
----
+```
+GET  /health          # Health check
+GET  /                # API info
+```
 
 ## Project Structure
 
 ```
 server/
 ├── app/
-│   ├── __init__.py
-│   ├── main.py        # FastAPI app & lifespan
-│   ├── config.py      # Settings management
-│   ├── db.py          # PostgreSQL connection
-│   ├── blob_store.py  # MinIO/S3 client
-│   ├── cache.py       # Redis client
-│   ├── queue.py       # Async ingest queue
-│   ├── worker.py      # Background flush worker
-│   ├── models.py      # Pydantic models
-│   ├── ingest.py      # Ingest routes
-│   └── routes.py      # Query routes
-└── requirements.txt
+│   ├── __init__.py       # Package info
+│   ├── main.py           # FastAPI app
+│   ├── config.py         # Settings
+│   ├── db.py             # PostgreSQL operations
+│   ├── cache.py          # Redis operations
+│   ├── queue.py          # Ingest queue
+│   ├── worker.py         # Background processor
+│   ├── blob_store.py     # S3/MinIO operations
+│   ├── auth.py           # Auth utilities
+│   ├── models.py         # Pydantic models
+│   └── routers/
+│       ├── auth.py       # Auth endpoints
+│       ├── ingest.py     # Ingest endpoints
+│       └── query.py      # Query endpoints
+├── pyproject.toml        # Python project config
+├── Dockerfile
+└── README.md
 ```
-
----
 
 ## Development
 
-### Run with Auto-reload
-
 ```bash
-uvicorn app.main:app --reload --port 8000
-```
-
-### Run Tests
-
-```bash
+# Run tests
 pytest
+
+# Format code
+ruff format app/
+
+# Lint
+ruff check app/
+
+# Type check
+mypy app/
 ```
 
-### Format Code
+## License
 
-```bash
-black app/
-isort app/
-```
+MIT

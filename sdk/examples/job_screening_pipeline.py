@@ -34,13 +34,13 @@ PIPELINE STAGES:
 Run: python examples/job_screening_pipeline.py
 Then: Open http://localhost:3000 to explore the trace
 """
-import xray
+import zenray
 import random
 import hashlib
 from datetime import datetime, timedelta
 from typing import Optional
 
-xray.init()
+zenray.init()
 
 # =============================================================================
 # EXTENSIVE DATASET: 2000-4000 Job Applicants
@@ -332,7 +332,7 @@ print(f"Companies: {len(set(a['current_company'] for a in APPLICANTS if a['curre
 # 12-STAGE SCREENING PIPELINE
 # =============================================================================
 
-@xray.pipeline("enterprise-engineer-screening", version="v3.0.0")
+@zenray.pipeline("enterprise-engineer-screening", version="v3.0.0")
 def screen_applicants(job_id: str, position: str = "Senior Software Engineer", max_interviews: int = 30) -> list[dict]:
     """
     Enterprise 12-stage applicant screening pipeline.
@@ -351,10 +351,10 @@ def screen_applicants(job_id: str, position: str = "Senior Software Engineer", m
     11. Availability Check    - Start date, notice period
     12. Final Selection       - Top N for interview slots
     """
-    xray.tag("job_id", job_id)
-    xray.tag("position", position)
-    xray.tag("total_applicants", str(len(APPLICANTS)))
-    xray.tag("max_interviews", str(max_interviews))
+    zenray.tag("job_id", job_id)
+    zenray.tag("position", position)
+    zenray.tag("total_applicants", str(len(APPLICANTS)))
+    zenray.tag("max_interviews", str(max_interviews))
     
     # Stage 1: Resume Parsing
     stage1 = parse_resumes(APPLICANTS)
@@ -399,7 +399,7 @@ def screen_applicants(job_id: str, position: str = "Senior Software Engineer", m
 # STAGE 1: Resume Parsing
 # -----------------------------------------------------------------------------
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def parse_resumes(applicants: list[dict]) -> list[dict]:
     """
     Stage 1: Parse and validate resume format.
@@ -410,30 +410,30 @@ def parse_resumes(applicants: list[dict]) -> list[dict]:
     - missing_contact: No valid email or phone
     - suspicious_content: Detected AI-generated or plagiarized content
     """
-    xray.metric("stage", 1)
-    xray.metric("stage_name", "resume_parsing")
+    zenray.metric("stage", 1)
+    zenray.metric("stage_name", "resume_parsing")
     
     kept = []
     
     for applicant in applicants:
         # Unparseable check
         if applicant["resume_quality"] == "unparseable":
-            xray.drop(applicant, "unparseable_resume")
+            zenray.drop(applicant, "unparseable_resume")
             continue
         
         # Poor formatting
         if applicant["resume_quality"] == "poor" and random.random() > 0.5:
-            xray.drop(applicant, "poor_formatting")
+            zenray.drop(applicant, "poor_formatting")
             continue
         
         # Missing contact (simulated)
         if random.random() < 0.02:
-            xray.drop(applicant, "missing_contact_info")
+            zenray.drop(applicant, "missing_contact_info")
             continue
         
         # Suspicious content detection (AI-generated resumes)
         if random.random() < 0.03:
-            xray.drop(applicant, "suspicious_ai_generated")
+            zenray.drop(applicant, "suspicious_ai_generated")
             continue
         
         # Compute resume score
@@ -442,7 +442,7 @@ def parse_resumes(applicants: list[dict]) -> list[dict]:
         
         kept.append(applicant)
     
-    xray.metric("pass_rate", len(kept) / len(applicants) if applicants else 0)
+    zenray.metric("pass_rate", len(kept) / len(applicants) if applicants else 0)
     return kept
 
 
@@ -450,7 +450,7 @@ def parse_resumes(applicants: list[dict]) -> list[dict]:
 # STAGE 2: Duplicate Detection
 # -----------------------------------------------------------------------------
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def detect_duplicates(applicants: list[dict]) -> list[dict]:
     """
     Stage 2: Remove duplicate applications.
@@ -460,8 +460,8 @@ def detect_duplicates(applicants: list[dict]) -> list[dict]:
     - duplicate_phone: Same phone number
     - duplicate_name_company: Same name + current company (likely same person)
     """
-    xray.metric("stage", 2)
-    xray.metric("stage_name", "duplicate_detection")
+    zenray.metric("stage", 2)
+    zenray.metric("stage_name", "duplicate_detection")
     
     kept = []
     seen_emails = set()
@@ -474,15 +474,15 @@ def detect_duplicates(applicants: list[dict]) -> list[dict]:
         name_company = f"{applicant['name'].lower()}_{applicant['current_company']}"
         
         if email in seen_emails:
-            xray.drop(applicant, "duplicate_email")
+            zenray.drop(applicant, "duplicate_email")
             continue
         
         if phone in seen_phones:
-            xray.drop(applicant, "duplicate_phone")
+            zenray.drop(applicant, "duplicate_phone")
             continue
         
         if name_company in seen_name_company and applicant["current_company"]:
-            xray.drop(applicant, "duplicate_name_company")
+            zenray.drop(applicant, "duplicate_name_company")
             continue
         
         seen_emails.add(email)
@@ -492,7 +492,7 @@ def detect_duplicates(applicants: list[dict]) -> list[dict]:
         
         kept.append(applicant)
     
-    xray.metric("duplicates_removed", len(applicants) - len(kept))
+    zenray.metric("duplicates_removed", len(applicants) - len(kept))
     return kept
 
 
@@ -500,7 +500,7 @@ def detect_duplicates(applicants: list[dict]) -> list[dict]:
 # STAGE 3: Basic Eligibility
 # -----------------------------------------------------------------------------
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def check_eligibility(applicants: list[dict]) -> list[dict]:
     """
     Stage 3: Basic eligibility checks.
@@ -511,30 +511,30 @@ def check_eligibility(applicants: list[dict]) -> list[dict]:
     - sponsorship_unavailable: Needs visa sponsorship (company doesn't sponsor)
     - location_ineligible: In a location we cannot hire from
     """
-    xray.metric("stage", 3)
-    xray.metric("stage_name", "basic_eligibility")
+    zenray.metric("stage", 3)
+    zenray.metric("stage_name", "basic_eligibility")
     
     kept = []
     
     for applicant in applicants:
         # Age check
         if applicant["age"] < 18:
-            xray.drop(applicant, "under_minimum_age")
+            zenray.drop(applicant, "under_minimum_age")
             continue
         
         # Work authorization
         if not applicant["us_authorized"] and not applicant["willing_to_relocate"]:
-            xray.drop(applicant, "no_work_authorization")
+            zenray.drop(applicant, "no_work_authorization")
             continue
         
         # Sponsorship (company doesn't sponsor in this scenario)
         if applicant["needs_sponsorship"]:
-            xray.drop(applicant, "sponsorship_unavailable")
+            zenray.drop(applicant, "sponsorship_unavailable")
             continue
         
         # Location eligibility (some locations have legal restrictions)
         if "International" in applicant["location"] and random.random() > 0.3:
-            xray.drop(applicant, "location_ineligible")
+            zenray.drop(applicant, "location_ineligible")
             continue
         
         kept.append(applicant)
@@ -546,7 +546,7 @@ def check_eligibility(applicants: list[dict]) -> list[dict]:
 # STAGE 4: Skills Matching
 # -----------------------------------------------------------------------------
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def match_skills(applicants: list[dict]) -> list[dict]:
     """
     Stage 4: Match required and preferred skills.
@@ -558,9 +558,9 @@ def match_skills(applicants: list[dict]) -> list[dict]:
     - insufficient_cloud_skills: No AWS/Docker/Kubernetes
     - too_few_preferred_skills: Has required but < 3 preferred
     """
-    xray.metric("stage", 4)
-    xray.metric("stage_name", "skills_matching")
-    xray.metric("required_skills", SKILLS["required"])
+    zenray.metric("stage", 4)
+    zenray.metric("stage_name", "skills_matching")
+    zenray.metric("required_skills", SKILLS["required"])
     
     kept = []
     
@@ -569,21 +569,21 @@ def match_skills(applicants: list[dict]) -> list[dict]:
         
         # Check each required skill
         if "Python" not in skills:
-            xray.drop(applicant, "missing_python")
+            zenray.drop(applicant, "missing_python")
             continue
         
         if "SQL" not in skills:
-            xray.drop(applicant, "missing_sql")
+            zenray.drop(applicant, "missing_sql")
             continue
         
         if "Git" not in skills:
-            xray.drop(applicant, "missing_git")
+            zenray.drop(applicant, "missing_git")
             continue
         
         # Cloud skills check (need at least one)
         cloud_skills = skills & set(SKILLS["highly_preferred"])
         if len(cloud_skills) == 0:
-            xray.drop(applicant, "no_cloud_experience")
+            zenray.drop(applicant, "no_cloud_experience")
             continue
         
         # Preferred skills count
@@ -591,7 +591,7 @@ def match_skills(applicants: list[dict]) -> list[dict]:
         bonus_count = len(skills & set(SKILLS["bonus"]))
         
         if preferred_count < 2:
-            xray.drop(applicant, "insufficient_preferred_skills")
+            zenray.drop(applicant, "insufficient_preferred_skills")
             continue
         
         # Compute skills score
@@ -604,7 +604,7 @@ def match_skills(applicants: list[dict]) -> list[dict]:
         
         kept.append(applicant)
     
-    xray.metric("avg_skills_score", sum(a["skills_score"] for a in kept) / len(kept) if kept else 0)
+    zenray.metric("avg_skills_score", sum(a["skills_score"] for a in kept) / len(kept) if kept else 0)
     return kept
 
 
@@ -612,7 +612,7 @@ def match_skills(applicants: list[dict]) -> list[dict]:
 # STAGE 5: Experience Evaluation
 # -----------------------------------------------------------------------------
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def evaluate_experience(applicants: list[dict]) -> list[dict]:
     """
     Stage 5: Evaluate work experience.
@@ -624,9 +624,9 @@ def evaluate_experience(applicants: list[dict]) -> list[dict]:
     - stagnant_career: Same title/level for 5+ years
     - overqualified: Principal/Staff applying for Senior role
     """
-    xray.metric("stage", 5)
-    xray.metric("stage_name", "experience_evaluation")
-    xray.metric("min_years", 4)
+    zenray.metric("stage", 5)
+    zenray.metric("stage_name", "experience_evaluation")
+    zenray.metric("min_years", 4)
     
     kept = []
     
@@ -636,31 +636,31 @@ def evaluate_experience(applicants: list[dict]) -> list[dict]:
         
         # Minimum experience
         if years < 4:
-            xray.drop(applicant, "insufficient_experience")
+            zenray.drop(applicant, "insufficient_experience")
             continue
         
         # Relevant experience (at least one decent company)
         has_relevant = any(job["prestige"] >= 55 for job in history)
         if not has_relevant:
-            xray.drop(applicant, "no_relevant_experience")
+            zenray.drop(applicant, "no_relevant_experience")
             continue
         
         # Job hopper detection
         short_stints = sum(1 for job in history if job["duration_years"] < 1)
         if short_stints >= 3:
-            xray.drop(applicant, "job_hopper_pattern")
+            zenray.drop(applicant, "job_hopper_pattern")
             continue
         
         # Career progression check (not stuck at same level)
         if years > 8:
             titles = [job["title"] for job in history]
             if all("Junior" in t or "Mid-level" in t for t in titles):
-                xray.drop(applicant, "stagnant_career")
+                zenray.drop(applicant, "stagnant_career")
                 continue
         
         # Overqualified check
         if applicant["current_title"] and ("Principal" in applicant["current_title"] or "Director" in applicant["current_title"]):
-            xray.drop(applicant, "overqualified_for_role")
+            zenray.drop(applicant, "overqualified_for_role")
             continue
         
         # Compute experience score
@@ -669,7 +669,7 @@ def evaluate_experience(applicants: list[dict]) -> list[dict]:
             (min(years, 15) / 15) * 0.5 +
             (avg_prestige / 100) * 0.5
         )
-        xray.score(applicant, applicant["experience_score"])
+        zenray.score(applicant, applicant["experience_score"])
         
         kept.append(applicant)
     
@@ -680,7 +680,7 @@ def evaluate_experience(applicants: list[dict]) -> list[dict]:
 # STAGE 6: Education Verification
 # -----------------------------------------------------------------------------
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def verify_education(applicants: list[dict]) -> list[dict]:
     """
     Stage 6: Verify education credentials.
@@ -691,8 +691,8 @@ def verify_education(applicants: list[dict]) -> list[dict]:
     - unaccredited_institution: Diploma mill or unverified
     - degree_mismatch: Claimed degree doesn't match verification
     """
-    xray.metric("stage", 6)
-    xray.metric("stage_name", "education_verification")
+    zenray.metric("stage", 6)
+    zenray.metric("stage_name", "education_verification")
     
     kept = []
     
@@ -704,23 +704,23 @@ def verify_education(applicants: list[dict]) -> list[dict]:
         # Degree relevance (flexible for senior roles)
         non_cs_degrees = ["No Degree"]
         if degree in non_cs_degrees and applicant["years_experience"] < 8:
-            xray.drop(applicant, "no_relevant_degree")
+            zenray.drop(applicant, "no_relevant_degree")
             continue
         
         # GPA check (only for recent grads)
         years_since_grad = 2024 - applicant["graduation_year"]
         if years_since_grad < 5 and gpa < 2.5:
-            xray.drop(applicant, "low_gpa")
+            zenray.drop(applicant, "low_gpa")
             continue
         
         # Institution check
         if prestige < 40:
-            xray.drop(applicant, "unaccredited_institution")
+            zenray.drop(applicant, "unaccredited_institution")
             continue
         
         # Verification failure (simulated)
         if random.random() < 0.02:
-            xray.drop(applicant, "degree_verification_failed")
+            zenray.drop(applicant, "degree_verification_failed")
             continue
         
         # Compute education score
@@ -739,7 +739,7 @@ def verify_education(applicants: list[dict]) -> list[dict]:
 # STAGE 7: Background Screening
 # -----------------------------------------------------------------------------
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def screen_background(applicants: list[dict]) -> list[dict]:
     """
     Stage 7: Background and reference checks.
@@ -750,31 +750,31 @@ def screen_background(applicants: list[dict]) -> list[dict]:
     - unexplained_gap: Large employment gap without explanation
     - employment_fraud: Misrepresented employment history
     """
-    xray.metric("stage", 7)
-    xray.metric("stage_name", "background_screening")
+    zenray.metric("stage", 7)
+    zenray.metric("stage_name", "background_screening")
     
     kept = []
     
     for applicant in applicants:
         # Criminal check
         if applicant["criminal_record"]:
-            xray.drop(applicant, "criminal_record")
+            zenray.drop(applicant, "criminal_record")
             continue
         
         # Reference check
         if applicant["reference_issue"]:
-            xray.drop(applicant, "negative_reference")
+            zenray.drop(applicant, "negative_reference")
             continue
         
         # Employment gap check
         if applicant["has_employment_gap"]:
             if applicant["gap_months"] > 12 and applicant["gap_reason"] in ["Personal", None]:
-                xray.drop(applicant, "unexplained_employment_gap")
+                zenray.drop(applicant, "unexplained_employment_gap")
                 continue
         
         # Employment fraud detection (simulated)
         if random.random() < 0.01:
-            xray.drop(applicant, "employment_fraud_detected")
+            zenray.drop(applicant, "employment_fraud_detected")
             continue
         
         kept.append(applicant)
@@ -786,7 +786,7 @@ def screen_background(applicants: list[dict]) -> list[dict]:
 # STAGE 8: Technical Assessment
 # -----------------------------------------------------------------------------
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def evaluate_technical(applicants: list[dict]) -> list[dict]:
     """
     Stage 8: Evaluate technical assessment scores.
@@ -797,17 +797,17 @@ def evaluate_technical(applicants: list[dict]) -> list[dict]:
     - system_design_low: System design score < 40
     - overall_technical_weak: Combined score below threshold
     """
-    xray.metric("stage", 8)
-    xray.metric("stage_name", "technical_assessment")
-    xray.metric("coding_threshold", 50)
-    xray.metric("system_design_threshold", 40)
+    zenray.metric("stage", 8)
+    zenray.metric("stage_name", "technical_assessment")
+    zenray.metric("coding_threshold", 50)
+    zenray.metric("system_design_threshold", 40)
     
     kept = []
     
     for applicant in applicants:
         # Incomplete assessment
         if not applicant["took_assessment"]:
-            xray.drop(applicant, "assessment_incomplete")
+            zenray.drop(applicant, "assessment_incomplete")
             continue
         
         coding = applicant["coding_score"] or 0
@@ -815,22 +815,22 @@ def evaluate_technical(applicants: list[dict]) -> list[dict]:
         
         # Coding threshold
         if coding < 50:
-            xray.drop(applicant, "coding_score_low")
+            zenray.drop(applicant, "coding_score_low")
             continue
         
         # System design threshold
         if sysdesign < 40:
-            xray.drop(applicant, "system_design_low")
+            zenray.drop(applicant, "system_design_low")
             continue
         
         # Combined score
         combined = (coding * 0.6 + sysdesign * 0.4)
         if combined < 55:
-            xray.drop(applicant, "combined_technical_weak")
+            zenray.drop(applicant, "combined_technical_weak")
             continue
         
         applicant["technical_score"] = combined / 100
-        xray.score(applicant, applicant["technical_score"])
+        zenray.score(applicant, applicant["technical_score"])
         
         kept.append(applicant)
     
@@ -841,7 +841,7 @@ def evaluate_technical(applicants: list[dict]) -> list[dict]:
 # STAGE 9: Culture Fit
 # -----------------------------------------------------------------------------
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def assess_culture(applicants: list[dict]) -> list[dict]:
     """
     Stage 9: Assess culture and values alignment.
@@ -851,25 +851,25 @@ def assess_culture(applicants: list[dict]) -> list[dict]:
     - poor_communication: Communication skills below threshold
     - collaboration_mismatch: Strong preference against team's style
     """
-    xray.metric("stage", 9)
-    xray.metric("stage_name", "culture_fit")
+    zenray.metric("stage", 9)
+    zenray.metric("stage_name", "culture_fit")
     
     kept = []
     
     for applicant in applicants:
         # Values alignment
         if applicant["values_alignment"] < 0.4:
-            xray.drop(applicant, "values_misalignment")
+            zenray.drop(applicant, "values_misalignment")
             continue
         
         # Communication skills
         if applicant["communication_score"] < 50:
-            xray.drop(applicant, "poor_communication_skills")
+            zenray.drop(applicant, "poor_communication_skills")
             continue
         
         # Collaboration style (team prefers hybrid/team-oriented)
         if applicant["collaboration_style"] == "Independent" and random.random() > 0.7:
-            xray.drop(applicant, "collaboration_style_mismatch")
+            zenray.drop(applicant, "collaboration_style_mismatch")
             continue
         
         # Compute culture score
@@ -890,7 +890,7 @@ def assess_culture(applicants: list[dict]) -> list[dict]:
 # STAGE 10: Compensation Check
 # -----------------------------------------------------------------------------
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def check_compensation(applicants: list[dict]) -> list[dict]:
     """
     Stage 10: Check salary and equity expectations.
@@ -900,9 +900,9 @@ def check_compensation(applicants: list[dict]) -> list[dict]:
     - equity_unrealistic: Demanding VP-level equity for IC role
     - total_comp_mismatch: Overall expectations way off
     """
-    xray.metric("stage", 10)
-    xray.metric("stage_name", "compensation_check")
-    xray.metric("max_salary", 220000)
+    zenray.metric("stage", 10)
+    zenray.metric("stage_name", "compensation_check")
+    zenray.metric("max_salary", 220000)
     
     kept = []
     
@@ -912,17 +912,17 @@ def check_compensation(applicants: list[dict]) -> list[dict]:
         
         # Salary cap
         if salary > 220000:
-            xray.drop(applicant, "salary_above_budget")
+            zenray.drop(applicant, "salary_above_budget")
             continue
         
         # Unrealistic equity
         if equity == "Very High" and applicant["years_experience"] < 10:
-            xray.drop(applicant, "equity_expectations_unrealistic")
+            zenray.drop(applicant, "equity_expectations_unrealistic")
             continue
         
         # Too far below (might indicate quality issues or flight risk)
         if salary < 80000 and applicant["years_experience"] > 5:
-            xray.drop(applicant, "salary_suspiciously_low")
+            zenray.drop(applicant, "salary_suspiciously_low")
             continue
         
         kept.append(applicant)
@@ -934,7 +934,7 @@ def check_compensation(applicants: list[dict]) -> list[dict]:
 # STAGE 11: Availability Check
 # -----------------------------------------------------------------------------
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def check_availability(applicants: list[dict]) -> list[dict]:
     """
     Stage 11: Check availability and start date.
@@ -944,9 +944,9 @@ def check_availability(applicants: list[dict]) -> list[dict]:
     - start_date_too_late: Cannot start within 120 days
     - not_available_fulltime: Only available for contract
     """
-    xray.metric("stage", 11)
-    xray.metric("stage_name", "availability_check")
-    xray.metric("max_notice_days", 90)
+    zenray.metric("stage", 11)
+    zenray.metric("stage_name", "availability_check")
+    zenray.metric("max_notice_days", 90)
     
     kept = []
     
@@ -957,19 +957,19 @@ def check_availability(applicants: list[dict]) -> list[dict]:
         
         # Notice period check
         if notice > 90:
-            xray.drop(applicant, "notice_period_too_long")
+            zenray.drop(applicant, "notice_period_too_long")
             continue
         
         # Start date check
         if days_until_start > 120:
-            xray.drop(applicant, "start_date_too_late")
+            zenray.drop(applicant, "start_date_too_late")
             continue
         
         # Full-time availability (not just contract)
         if applicant["open_to_contract"] and random.random() > 0.8:
             # Some contract-only folks filtered
             if not applicant["willing_to_relocate"]:
-                xray.drop(applicant, "contract_only_preference")
+                zenray.drop(applicant, "contract_only_preference")
                 continue
         
         kept.append(applicant)
@@ -981,7 +981,7 @@ def check_availability(applicants: list[dict]) -> list[dict]:
 # STAGE 12: Final Selection
 # -----------------------------------------------------------------------------
 
-@xray.step("SELECT")
+@zenray.step("SELECT")
 def select_interviews(applicants: list[dict], max_slots: int) -> list[dict]:
     """
     Stage 12: Final ranking and interview slot selection.
@@ -992,10 +992,10 @@ def select_interviews(applicants: list[dict], max_slots: int) -> list[dict]:
     - diversity_limit: Too many from same company (max 3)
     - source_diversity: Too many from same referral source
     """
-    xray.metric("stage", 12)
-    xray.metric("stage_name", "final_selection")
-    xray.metric("max_slots", max_slots)
-    xray.metric("score_threshold", 0.55)
+    zenray.metric("stage", 12)
+    zenray.metric("stage_name", "final_selection")
+    zenray.metric("max_slots", max_slots)
+    zenray.metric("score_threshold", 0.55)
     
     # Compute final scores
     for applicant in applicants:
@@ -1007,7 +1007,7 @@ def select_interviews(applicants: list[dict], max_slots: int) -> list[dict]:
             applicant["culture_score"] * 0.15
         )
         applicant["final_score"] = round(final, 4)
-        xray.score(applicant, final)
+        zenray.score(applicant, final)
     
     # Sort by final score
     ranked = sorted(applicants, key=lambda x: x["final_score"], reverse=True)
@@ -1019,24 +1019,24 @@ def select_interviews(applicants: list[dict], max_slots: int) -> list[dict]:
     for applicant in ranked:
         # Score threshold
         if applicant["final_score"] < 0.55:
-            xray.drop(applicant, "below_score_threshold")
+            zenray.drop(applicant, "below_score_threshold")
             continue
         
         # Slots full
         if len(selected) >= max_slots:
-            xray.drop(applicant, "interview_slots_full")
+            zenray.drop(applicant, "interview_slots_full")
             continue
         
         # Company diversity
         company = applicant["current_company"]
         if company and company_counts.get(company, 0) >= 3:
-            xray.drop(applicant, "company_diversity_limit")
+            zenray.drop(applicant, "company_diversity_limit")
             continue
         
         # Source diversity
         source = applicant["source"]
         if source_counts.get(source, 0) >= 8:
-            xray.drop(applicant, "source_diversity_limit")
+            zenray.drop(applicant, "source_diversity_limit")
             continue
         
         selected.append(applicant)
@@ -1044,10 +1044,10 @@ def select_interviews(applicants: list[dict], max_slots: int) -> list[dict]:
             company_counts[company] = company_counts.get(company, 0) + 1
         source_counts[source] = source_counts.get(source, 0) + 1
     
-    xray.metric("selected_count", len(selected))
-    xray.metric("unique_companies", len(company_counts))
-    xray.metric("top_score", selected[0]["final_score"] if selected else 0)
-    xray.metric("cutoff_score", selected[-1]["final_score"] if selected else 0)
+    zenray.metric("selected_count", len(selected))
+    zenray.metric("unique_companies", len(company_counts))
+    zenray.metric("top_score", selected[0]["final_score"] if selected else 0)
+    zenray.metric("cutoff_score", selected[-1]["final_score"] if selected else 0)
     
     return selected
 

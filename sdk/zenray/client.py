@@ -6,7 +6,7 @@ from queue import Queue, Empty
 import time
 import atexit
 
-from xray.models import IngestPayload, RunData, StepData
+from zenray.models import IngestPayload, RunData, StepData
 
 logger = logging.getLogger("zenray")
 

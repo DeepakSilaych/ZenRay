@@ -29,7 +29,7 @@ const links = [{ href: "/docs", label: "Documentation" }];
           >{config.siteName}</span
         >
       </a>
-
+      
       <div class="hidden md:flex items-center gap-7">
         {
           links.map((link) => (
@@ -37,16 +37,16 @@ const links = [{ href: "/docs", label: "Documentation" }];
               href={link.href}
               class="text-sm font-medium text-zinc-400 hover:text-white transition-colors relative group"
             >
-              {link.label}
+            {link.label}
               <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-accent transition-all group-hover:w-full" />
-            </a>
+          </a>
           ))
         }
       </div>
     </div>
 
     <div class="flex items-center gap-4">
-      <a
+      <a 
         href={config.githubUrl}
         aria-label="GitHub"
         class="hidden sm:flex items-center text-sm text-zinc-400 hover:text-white transition-colors"
@@ -57,7 +57,7 @@ const links = [{ href: "/docs", label: "Documentation" }];
           ></path>
         </svg>
       </a>
-
+      
       <a
         href={config.dashboardUrl}
         class="px-5 py-2.5 bg-white text-navy-950 text-sm font-bold rounded-full hover:bg-zinc-100 hover:scale-105 transition-all shadow-lg shadow-white/10"

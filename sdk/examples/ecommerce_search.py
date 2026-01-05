@@ -11,12 +11,12 @@ A realistic product search pipeline with:
 
 Run: python examples/ecommerce_search.py
 """
-import xray
+import zenray
 import random
 import math
 from datetime import datetime, timedelta
 
-xray.init()
+zenray.init()
 
 # =============================================================================
 # DATASET: 500+ E-commerce Products
@@ -172,7 +172,7 @@ USER_PROFILES = generate_user_profiles(50)
 # SEARCH PIPELINE
 # =============================================================================
 
-@xray.pipeline("ecommerce-search", version="v2.1.0")
+@zenray.pipeline("ecommerce-search", version="v2.1.0")
 def search_products(query: str, user_id: str, limit: int = 20) -> list[dict]:
     """
     Full e-commerce search pipeline.
@@ -189,9 +189,9 @@ def search_products(query: str, user_id: str, limit: int = 20) -> list[dict]:
     if not user:
         user = USER_PROFILES[0]
     
-    xray.tag("query", query)
-    xray.tag("user_id", user_id)
-    xray.tag("price_sensitivity", user["price_sensitivity"])
+    zenray.tag("query", query)
+    zenray.tag("user_id", user_id)
+    zenray.tag("price_sensitivity", user["price_sensitivity"])
     
     # Pipeline stages
     candidates = retrieve_candidates(query)
@@ -203,10 +203,10 @@ def search_products(query: str, user_id: str, limit: int = 20) -> list[dict]:
     return diversified[:limit]
 
 
-@xray.step("RETRIEVE")
+@zenray.step("RETRIEVE")
 def retrieve_candidates(query: str) -> list[dict]:
     """Retrieve candidates matching the query."""
-    xray.metric("query_length", len(query))
+    zenray.metric("query_length", len(query))
     
     query_lower = query.lower()
     query_terms = query_lower.split()
@@ -232,11 +232,11 @@ def retrieve_candidates(query: str) -> list[dict]:
         for c in candidates:
             c["match_score"] = 0.1
     
-    xray.metric("candidates_found", len(candidates))
+    zenray.metric("candidates_found", len(candidates))
     return candidates
 
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def filter_candidates(candidates: list[dict], user: dict) -> list[dict]:
     """Apply filters based on availability and user preferences."""
     kept = []
@@ -244,35 +244,35 @@ def filter_candidates(candidates: list[dict], user: dict) -> list[dict]:
     for product in candidates:
         # Out of stock
         if not product["in_stock"]:
-            xray.drop(product, "out_of_stock")
+            zenray.drop(product, "out_of_stock")
             continue
         
         # Price filter
         min_price, max_price = user["price_range"]
         if product["price"] < min_price:
-            xray.drop(product, "price_too_low")
+            zenray.drop(product, "price_too_low")
             continue
         if product["price"] > max_price:
-            xray.drop(product, "price_too_high")
+            zenray.drop(product, "price_too_high")
             continue
         
         # Rating filter
         if product["rating"] < user["min_rating"]:
-            xray.drop(product, "rating_too_low")
+            zenray.drop(product, "rating_too_low")
             continue
         
         # Prime filter (optional)
         if user["prefers_prime"] and not product["prime_eligible"]:
-            xray.drop(product, "not_prime_eligible")
+            zenray.drop(product, "not_prime_eligible")
             continue
         
         kept.append(product)
     
-    xray.metric("filter_pass_rate", len(kept) / len(candidates) if candidates else 0)
+    zenray.metric("filter_pass_rate", len(kept) / len(candidates) if candidates else 0)
     return kept
 
 
-@xray.step("RANK")
+@zenray.step("RANK")
 def rank_by_relevance(candidates: list[dict], query: str) -> list[dict]:
     """Rank candidates by relevance score."""
     
@@ -297,16 +297,16 @@ def rank_by_relevance(candidates: list[dict], query: str) -> list[dict]:
         relevance = base_score + rating_score + review_score + sales_score + recency_score
         product["relevance_score"] = round(relevance, 4)
         
-        xray.score(product, relevance)
+        zenray.score(product, relevance)
     
     return sorted(candidates, key=lambda x: x["relevance_score"], reverse=True)
 
 
-@xray.step("TRANSFORM")
+@zenray.step("TRANSFORM")
 def personalize_results(candidates: list[dict], user: dict) -> list[dict]:
     """Boost results based on user preferences."""
-    xray.metric("user_purchase_history_size", len(user["purchase_history"]))
-    xray.metric("user_browsing_history_size", len(user["browsing_history"]))
+    zenray.metric("user_purchase_history_size", len(user["purchase_history"]))
+    zenray.metric("user_browsing_history_size", len(user["browsing_history"]))
     
     for product in candidates:
         boost = 0
@@ -329,12 +329,12 @@ def personalize_results(candidates: list[dict], user: dict) -> list[dict]:
         product["personalization_boost"] = boost
         product["final_score"] = product["relevance_score"] + boost
         
-        xray.score(product, product["final_score"])
+        zenray.score(product, product["final_score"])
     
     return sorted(candidates, key=lambda x: x["final_score"], reverse=True)
 
 
-@xray.step("SELECT")
+@zenray.step("SELECT")
 def diversify_results(candidates: list[dict]) -> list[dict]:
     """Ensure diversity in results (max 5 per category)."""
     category_counts: dict[str, int] = {}
@@ -345,14 +345,14 @@ def diversify_results(candidates: list[dict]) -> list[dict]:
         current = category_counts.get(cat, 0)
         
         if current >= 5:
-            xray.drop(product, "category_limit_reached")
+            zenray.drop(product, "category_limit_reached")
             continue
         
         category_counts[cat] = current + 1
         diversified.append(product)
     
-    xray.metric("categories_represented", len(category_counts))
-    xray.metric("category_distribution", category_counts)
+    zenray.metric("categories_represented", len(category_counts))
+    zenray.metric("category_distribution", category_counts)
     
     return diversified
 

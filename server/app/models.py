@@ -1,11 +1,34 @@
-from pydantic import BaseModel, Field
-from typing import Optional, Any
-from enum import Enum
+"""
+Pydantic models for ZenRay API.
+"""
 from datetime import datetime
+from enum import Enum
+from typing import Any, Optional
 
-# --- Enums ---
+from pydantic import BaseModel, Field
+
+
+# =============================================================================
+# Enums
+# =============================================================================
+
+class RunStatus(str, Enum):
+    """Run status values."""
+    RUNNING = "RUNNING"
+    SUCCESS = "SUCCESS"
+    FAILURE = "FAILURE"
+
+
+class StepStatus(str, Enum):
+    """Step status values."""
+    RUNNING = "RUNNING"
+    SUCCESS = "SUCCESS"
+    FAILURE = "FAILURE"
+    SKIPPED = "SKIPPED"
+
 
 class StepKind(str, Enum):
+    """Step kind values."""
     RETRIEVE = "RETRIEVE"
     FILTER = "FILTER"
     RANK = "RANK"
@@ -15,54 +38,56 @@ class StepKind(str, Enum):
     TRANSFORM = "TRANSFORM"
     TOOL_CALL = "TOOL_CALL"
 
-class RunStatus(str, Enum):
-    RUNNING = "RUNNING"
-    SUCCESS = "SUCCESS"
-    FAILURE = "FAILURE"
-    TIMEOUT = "TIMEOUT"
-
-class StepStatus(str, Enum):
-    RUNNING = "RUNNING"
-    SUCCESS = "SUCCESS"
-    FAILURE = "FAILURE"
-    SKIPPED = "SKIPPED"
-
-class CaptureMode(str, Enum):
-    SUMMARY = "SUMMARY"
-    TOP_K = "TOP_K"
-    FULL = "FULL"
 
 class ArtifactType(str, Enum):
+    """Artifact type values."""
     PROMPT = "prompt"
     RESPONSE = "response"
-    CONFIG = "config"
-    INPUT = "input"
-    OUTPUT = "output"
-    JUDGMENTS = "judgments"
-    METADATA = "metadata"
-    ERROR = "error"
     DEBUG = "debug"
+    CONFIG = "config"
+    METRICS = "metrics"
 
-# --- Core Models ---
+
+# =============================================================================
+# Ingest Models
+# =============================================================================
 
 class CandidateSet(BaseModel):
-    mode: CaptureMode = CaptureMode.SUMMARY
+    """Candidate set for a step."""
+    mode: str = "summary"
     input_count: int = 0
     output_count: int = 0
-    reason_histogram: Optional[dict[str, int]] = None  # reason -> count
-    score_histogram: Optional[dict[str, int]] = None   # bucket -> count
-    top_kept: Optional[list[dict[str, Any]]] = None
-    top_dropped: Optional[list[dict[str, Any]]] = None
-    dropped_by_reason: Optional[dict[str, list[dict[str, Any]]]] = None  # reason -> candidates
-    full_candidates: Optional[list[dict[str, Any]]] = None  # only for FULL mode
+    reason_histogram: Optional[dict[str, int]] = None
+    score_histogram: Optional[dict[str, int]] = None
+    top_kept: Optional[list[Any]] = None
+    top_dropped: Optional[list[Any]] = None
+    dropped_by_reason: Optional[dict[str, list[Any]]] = None
+    full_candidates: Optional[list[Any]] = None
+
 
 class Artifact(BaseModel):
+    """Artifact attached to a step."""
     artifact_id: str
     step_id: str
     type: ArtifactType
-    content: Any  # JSON-serializable content
+    content: Any
+
+
+class Run(BaseModel):
+    """Run data for ingestion."""
+    run_id: str
+    pipeline_name: str
+    version: Optional[str] = None
+    status: RunStatus = RunStatus.RUNNING
+    started_at: datetime
+    ended_at: Optional[datetime] = None
+    tags: Optional[dict[str, str]] = None
+    input_summary: Optional[dict[str, Any]] = None
+    final_output: Optional[dict[str, Any]] = None
+
 
 class Step(BaseModel):
+    """Step data for ingestion."""
     step_id: str
     run_id: str
     parent_step_id: Optional[str] = None
@@ -78,53 +103,51 @@ class Step(BaseModel):
     candidate_set: Optional[CandidateSet] = None
     artifacts: Optional[list[Artifact]] = None
 
-class Run(BaseModel):
-    run_id: str
-    pipeline_name: str
-    version: Optional[str] = None
-    status: RunStatus = RunStatus.RUNNING
-    started_at: datetime = Field(default_factory=datetime.utcnow)
-    ended_at: Optional[datetime] = None
-    tags: Optional[dict[str, str]] = None
-    input_summary: Optional[dict[str, Any]] = None
-    final_output: Optional[dict[str, Any]] = None
-
-# --- Ingest Payload ---
 
 class IngestPayload(BaseModel):
+    """Batch ingest payload."""
     schema_version: str = "1.0"
     runs: Optional[list[Run]] = None
     steps: Optional[list[Step]] = None
 
-# --- Query Response Models ---
+
+# =============================================================================
+# Query Response Models
+# =============================================================================
 
 class RunSummary(BaseModel):
+    """Run summary for list views."""
     run_id: str
     pipeline_name: str
-    version: Optional[str]
-    status: RunStatus
-    started_at: datetime
-    ended_at: Optional[datetime]
-    tags: Optional[dict[str, str]]
+    version: Optional[str] = None
+    status: str
+    started_at: Optional[str] = None
+    ended_at: Optional[str] = None
+    tags: Optional[dict[str, str]] = None
     step_count: int = 0
 
+
 class StepSummary(BaseModel):
+    """Step summary for list views."""
     step_id: str
     run_id: str
-    kind: StepKind
+    kind: str
     name: str
-    input_count: Optional[int]
-    output_count: Optional[int]
+    input_count: Optional[int] = None
+    output_count: Optional[int] = None
     drop_ratio: Optional[float] = None
-    status: StepStatus
-    duration_ms: Optional[int]
+    status: str
+    duration_ms: Optional[int] = None
+
 
 class RunDetail(BaseModel):
-    run: Run
+    """Detailed run with steps."""
+    run: dict
     steps: list[StepSummary]
 
-class StepDetail(BaseModel):
-    step: Step
-    candidate_set: Optional[CandidateSet] = None
-    artifacts: Optional[list[dict[str, Any]]] = None
 
+class StepDetail(BaseModel):
+    """Detailed step with candidate set and artifacts."""
+    step: dict
+    candidate_set: Optional[dict] = None
+    artifacts: Optional[list[dict]] = None

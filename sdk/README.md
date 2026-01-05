@@ -1,33 +1,14 @@
-# ZenRay Python SDK
+# ZenRay
 
-Instrument your ML pipelines with simple decorators.
+[![PyPI version](https://badge.fury.io/py/zenray.svg)](https://badge.fury.io/py/zenray)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
----
-
-## Overview
-
-The ZenRay SDK provides:
-
-- **`@xray.pipeline`** — Mark your pipeline entry point
-- **`@xray.step`** — Track individual processing stages
-- **`xray.drop()`** — Record why candidates were filtered
-- **`xray.score()`** — Capture ranking scores
-- **`xray.tag()`** — Add custom metadata
-
-All data is sent asynchronously with <1ms overhead.
+**Observability for ML/LLM pipelines.** Debug candidate drop-off and track decision context with minimal code changes.
 
 ---
 
 ## Installation
-
-### From Source (Development)
-
-```bash
-cd sdk
-pip install -e .
-```
-
-### From PyPI (Coming Soon)
 
 ```bash
 pip install zenray
@@ -38,162 +19,181 @@ pip install zenray
 ## Quick Start
 
 ```python
-import xray
+import zenray
 
-@xray.pipeline("my-rag-pipeline")
+# Initialize with your API key
+zenray.init(api_key="zenray_xxxxx")  # or set ZENRAY_API_KEY env var
+
+@zenray.pipeline("my-rag-pipeline")
 def answer(question: str):
     docs = retrieve(question)
     filtered = filter_docs(docs)
     return generate(question, filtered)
 
-@xray.step("RETRIEVE")
+@zenray.step("RETRIEVE")
 def retrieve(question: str):
-    # Your retrieval logic
     return vector_db.search(question, k=100)
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def filter_docs(docs):
+    kept = []
     for doc in docs:
         if doc.score < 0.3:
-            xray.drop(doc, "low_relevance")
-            continue
-        yield doc
+            zenray.drop(doc, "low_relevance")  # Track why items are dropped
+        else:
+            kept.append(doc)
+    return kept
+
+@zenray.step("RANK")
+def rank_docs(docs):
+    for doc in docs:
+        zenray.score(doc, doc.relevance)  # Track scores
+    return sorted(docs, key=lambda d: d.relevance, reverse=True)[:10]
 ```
+
+View traces at [zenray.live](https://zenray.live) or self-host.
+
+---
+
+## Features
+
+| Feature                 | Description                         |
+| ----------------------- | ----------------------------------- |
+| **`@zenray.pipeline`**  | Mark pipeline entry points          |
+| **`@zenray.step`**      | Track processing stages             |
+| **`zenray.drop()`**     | Record why candidates were filtered |
+| **`zenray.score()`**    | Capture ranking scores              |
+| **`zenray.tag()`**      | Add custom metadata                 |
+| **`zenray.artifact()`** | Attach prompts, responses, etc.     |
+
+All data is sent asynchronously with **<1ms overhead**.
 
 ---
 
 ## API Reference
 
-### `@xray.pipeline(name)`
-
-Marks the entry point of your pipeline. Creates a new run in the dashboard.
+### Initialization
 
 ```python
-@xray.pipeline("product-search")
-def search(query: str, user_id: str):
+zenray.init(
+    api_key="zenray_xxxxx",     # Required (or ZENRAY_API_KEY env var)
+    endpoint="http://localhost:8000",  # Server URL
+    disabled=False,              # Disable tracing
+    sample_rate=1.0,            # 0-1 sampling rate
+)
+```
+
+### Decorators
+
+```python
+@zenray.pipeline("pipeline-name", version="v1.0")
+def my_pipeline(input):
+    ...
+
+@zenray.step("RETRIEVE")  # or FILTER, RANK, LLM_CALL, etc.
+def my_step(data):
     ...
 ```
 
-### `@xray.step(name)`
-
-Tracks a processing stage within a pipeline.
+### Tracking Functions
 
 ```python
-@xray.step("RERANK")
-def rerank(docs):
-    ...
+# Record dropped candidates
+zenray.drop(item, "reason")
+
+# Record scores
+zenray.score(item, 0.95)
+
+# Custom metrics
+zenray.metric("latency_ms", 150)
+
+# Attach artifacts (prompts, responses)
+zenray.artifact("prompt", "What is the capital of France?")
+zenray.artifact("response", "Paris")
+
+# Add tags to runs
+zenray.tag("user_id", "u123")
+zenray.tag("model", "gpt-4")
 ```
 
-### `xray.drop(item, reason)`
-
-Records why an item was filtered out.
+### Error Handling
 
 ```python
-if doc.score < threshold:
-    xray.drop(doc, "below_threshold")
-```
+# Check for errors
+if zenray.get_last_error():
+    print(f"Error: {zenray.get_last_error()}")
 
-### `xray.score(item, score)`
-
-Captures a ranking score for an item.
-
-```python
-for doc in docs:
-    score = model.predict(doc)
-    xray.score(doc, score)
-```
-
-### `xray.tag(key, value)`
-
-Adds custom metadata to the current run.
-
-```python
-xray.tag("user_id", user_id)
-xray.tag("model_version", "v2.1")
+# Get stats
+stats = zenray.get_stats()
+print(f"Success: {stats['success_count']}, Errors: {stats['error_count']}")
 ```
 
 ---
 
 ## Configuration
 
-Set via environment variables:
-
-| Variable           | Default               | Description             |
-| ------------------ | --------------------- | ----------------------- |
-| `XRAY_ENDPOINT`    | http://localhost:8000 | ZenRay server URL       |
-| `XRAY_DISABLED`    | false                 | Disable all tracing     |
-| `XRAY_SAMPLE_RATE` | 1.0                   | Sampling rate (0.0-1.0) |
-| `XRAY_TOP_K`       | 10                    | Max candidates per step |
-
----
-
-## Examples
-
-Run the example pipelines:
-
-```bash
-cd sdk
-
-# Set the server endpoint
-export XRAY_ENDPOINT="http://localhost:8000"
-
-# Run examples
-python examples/rag_document_retrieval.py
-python examples/ecommerce_search.py
-python examples/recommendation_system.py
-python examples/content_moderation.py
-```
-
-### Available Examples
-
-| Example                     | Description                   |
-| --------------------------- | ----------------------------- |
-| `minimal_api_demo.py`       | Basic SDK usage               |
-| `rag_document_retrieval.py` | RAG pipeline with filtering   |
-| `ecommerce_search.py`       | Product search with ranking   |
-| `recommendation_system.py`  | User recommendations          |
-| `content_moderation.py`     | Content filtering pipeline    |
-| `job_screening_pipeline.py` | Resume screening example      |
-| `competitor_selection.py`   | Competitive analysis pipeline |
+| Environment Variable | Default                 | Description             |
+| -------------------- | ----------------------- | ----------------------- |
+| `ZENRAY_API_KEY`     | -                       | API key (required)      |
+| `ZENRAY_ENDPOINT`    | `http://localhost:8000` | Server URL              |
+| `ZENRAY_DISABLED`    | `false`                 | Disable tracing         |
+| `ZENRAY_SAMPLE_RATE` | `1.0`                   | Sampling rate (0-1)     |
+| `ZENRAY_TOP_K`       | `10`                    | Max candidates per step |
 
 ---
 
-## Project Structure
+## Step Kinds
 
-```
-sdk/
-├── xray/
-│   ├── __init__.py      # Public API exports
-│   ├── decorators.py    # @pipeline, @step decorators
-│   ├── context.py       # Run/step context management
-│   ├── client.py        # HTTP client for server
-│   ├── models.py        # Data models
-│   ├── candidates.py    # Candidate tracking
-│   ├── config.py        # Configuration
-│   └── helpers.py       # Utility functions
-├── examples/            # Example pipelines
-├── requirements.txt
-└── pyproject.toml
+| Kind        | Use Case                |
+| ----------- | ----------------------- |
+| `RETRIEVE`  | Database/vector search  |
+| `FILTER`    | Candidate filtering     |
+| `RANK`      | Scoring/reranking       |
+| `LLM_CALL`  | LLM inference           |
+| `JUDGE`     | LLM-as-judge evaluation |
+| `SELECT`    | Final selection         |
+| `TRANSFORM` | Data transformation     |
+| `TOOL_CALL` | External tool calls     |
+
+---
+
+## Async Support
+
+```python
+@zenray.async_pipeline("async-pipeline")
+async def my_async_pipeline(input):
+    ...
+
+@zenray.async_step("LLM_CALL")
+async def call_llm(prompt):
+    ...
 ```
 
 ---
 
-## Development
-
-### Install Dev Dependencies
+## Self-Hosting
 
 ```bash
-pip install -e ".[dev]"
+# Clone the repo
+git clone https://github.com/DeepakSilaych/ZenRay
+cd ZenRay
+
+# Start services
+docker compose up -d
+
+# Access dashboard at http://localhost:5174
 ```
 
-### Run Tests
+---
 
-```bash
-pytest
-```
+## Links
 
-### Type Checking
+- **Dashboard**: [zenray.live](https://zenray.live)
+- **Documentation**: [zenray.live/docs](https://zenray.live/docs)
+- **GitHub**: [github.com/DeepakSilaych/ZenRay](https://github.com/DeepakSilaych/ZenRay)
 
-```bash
-mypy xray/
-```
+---
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.

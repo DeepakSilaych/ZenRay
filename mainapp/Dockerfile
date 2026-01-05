@@ -11,8 +11,8 @@ RUN npm install
 # Copy source code (node_modules excluded via .dockerignore)
 COPY . .
 
-EXPOSE 5173
+EXPOSE 5174
 
 # Use dev server - Caddy will handle host rewriting
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173", "--", "--disable-host-check"]
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5174", "--", "--disable-host-check"]
 

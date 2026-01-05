@@ -1,10 +1,10 @@
 from typing import Any, Optional, Callable, TYPE_CHECKING
 from collections import Counter
 
-from xray.models import CandidateSetData, CaptureMode
+from zenray.models import CandidateSetData, CaptureMode
 
 if TYPE_CHECKING:
-    from xray.step import Step
+    from zenray.step import Step
 
 class CandidateSet:
     """Helper for recording candidate set transitions with automatic mode selection."""
@@ -18,7 +18,7 @@ class CandidateSet:
         mode: Optional[CaptureMode] = None,
         top_k: Optional[int] = None,
     ):
-        from xray.config import get_config
+        from zenray.config import get_config
         
         self._step = step
         self._mode = mode

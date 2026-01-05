@@ -89,6 +89,10 @@ services:
       XRAY_S3_BUCKET: xray-blobs
       XRAY_REDIS_HOST: redis
       XRAY_REDIS_PORT: 6379
+      XRAY_FRONTEND_URL: http://localhost:5174
+      # Google OAuth - set these in .env or override here
+      # XRAY_GOOGLE_CLIENT_ID: your-client-id
+      # XRAY_GOOGLE_CLIENT_SECRET: your-client-secret
     ports:
       - "8000:8000"
     depends_on:
@@ -109,7 +113,7 @@ services:
       dockerfile: Dockerfile
     container_name: zenray-dashboard
     ports:
-      - "5173:5173"
+      - "5174:5174"
     depends_on:
       - server
     networks:

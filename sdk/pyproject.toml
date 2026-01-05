@@ -1,21 +1,90 @@
 [build-system]
-requires = ["setuptools>=69", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
-name = "xray-sdk"
+name = "zenray"
 version = "0.1.0"
-description = "XRay SDK for instrumenting multi-step pipelines"
+description = "Observability SDK for ML/LLM pipelines - debug candidate drop-off and track decision context"
 readme = "README.md"
-requires-python = ">=3.11"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Deepak Silaych", email = "deepaksilaych@gmail.com"}
+]
+maintainers = [
+    {name = "Deepak Silaych", email = "deepaksilaych@gmail.com"}
+]
+keywords = [
+    "ml",
+    "llm",
+    "observability",
+    "debugging",
+    "tracing",
+    "rag",
+    "pipelines",
+    "instrumentation",
+    "monitoring",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Debuggers",
+    "Topic :: System :: Monitoring",
+    "Typing :: Typed",
+]
 dependencies = [
-  "httpx==0.26.0",
-  "pydantic==2.5.3",
+    "httpx>=0.24.0",
+    "pydantic>=2.0.0",
 ]
 
-[tool.setuptools]
-packages = ["xray"]
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
 
+[project.urls]
+Homepage = "https://zenray.live"
+Documentation = "https://zenray.live/docs"
+Repository = "https://github.com/DeepakSilaych/ZenRay"
+Issues = "https://github.com/DeepakSilaych/ZenRay/issues"
+Changelog = "https://github.com/DeepakSilaych/ZenRay/blob/main/CHANGELOG.md"
 
+[tool.hatch.build.targets.wheel]
+packages = ["zenray"]
 
+[tool.hatch.build.targets.sdist]
+include = [
+    "/zenray",
+    "/README.md",
+    "/LICENSE",
+]
 
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.9"
+strict = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

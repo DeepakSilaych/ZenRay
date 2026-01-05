@@ -6,13 +6,13 @@ Provides @pipeline and @step decorators for minimal-code instrumentation.
 import functools
 from typing import Optional, Callable, Any, TypeVar, ParamSpec
 
-from xray.context import (
+from zenray.context import (
     RunContext, StepContext,
     get_current_run, get_current_step,
     set_current_run, set_current_step,
     reset_current_run, reset_current_step,
 )
-from xray.config import should_sample
+from zenray.config import should_sample
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -65,8 +65,8 @@ def pipeline(
             finally:
                 reset_current_run(token)
                 # Flush to ensure data is sent
-                from xray.client import get_client
-                from xray.config import is_enabled
+                from zenray.client import get_client
+                from zenray.config import is_enabled
                 if is_enabled():
                     get_client().flush()
         
@@ -167,8 +167,8 @@ def async_pipeline(
                 raise
             finally:
                 reset_current_run(token)
-                from xray.client import get_client
-                from xray.config import is_enabled
+                from zenray.client import get_client
+                from zenray.config import is_enabled
                 if is_enabled():
                     get_client().flush()
         

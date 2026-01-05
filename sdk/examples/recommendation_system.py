@@ -10,13 +10,13 @@ A collaborative filtering + content-based recommendation system with:
 
 Run: python examples/recommendation_system.py
 """
-import xray
+import zenray
 import random
 import math
 from datetime import datetime, timedelta
 from collections import defaultdict
 
-xray.init()
+zenray.init()
 
 # =============================================================================
 # DATASET: Movies & Users
@@ -171,7 +171,7 @@ MOVIE_BY_ID = {m["id"]: m for m in MOVIES}
 # RECOMMENDATION PIPELINE
 # =============================================================================
 
-@xray.pipeline("movie-recommendations", version="v4.0.0")
+@zenray.pipeline("movie-recommendations", version="v4.0.0")
 def get_recommendations(user_id: str, context: str = "home", limit: int = 20) -> list[dict]:
     """
     Generate personalized movie recommendations.
@@ -188,10 +188,10 @@ def get_recommendations(user_id: str, context: str = "home", limit: int = 20) ->
     if not user:
         user = USERS[0]
     
-    xray.tag("user_id", user_id)
-    xray.tag("context", context)
-    xray.tag("activity_level", user["activity_level"])
-    xray.tag("subscription", user["subscription_tier"])
+    zenray.tag("user_id", user_id)
+    zenray.tag("context", context)
+    zenray.tag("activity_level", user["activity_level"])
+    zenray.tag("subscription", user["subscription_tier"])
     
     # Generate candidates from multiple sources
     collab_candidates = collaborative_filtering(user)
@@ -216,11 +216,11 @@ def get_recommendations(user_id: str, context: str = "home", limit: int = 20) ->
     return final[:limit]
 
 
-@xray.step("RETRIEVE")
+@zenray.step("RETRIEVE")
 def collaborative_filtering(user: dict) -> list[dict]:
     """Find movies liked by similar users."""
-    xray.metric("algorithm", "user-user-knn")
-    xray.metric("k_neighbors", 50)
+    zenray.metric("algorithm", "user-user-knn")
+    zenray.metric("k_neighbors", 50)
     
     user_ratings = user["watch_history"]
     
@@ -246,7 +246,7 @@ def collaborative_filtering(user: dict) -> list[dict]:
     similar_users.sort(key=lambda x: x[1], reverse=True)
     top_similar = similar_users[:50]
     
-    xray.metric("similar_users_found", len(similar_users))
+    zenray.metric("similar_users_found", len(similar_users))
     
     # Get movies from similar users that this user hasn't watched
     candidates = {}
@@ -273,10 +273,10 @@ def collaborative_filtering(user: dict) -> list[dict]:
     return result[:200]
 
 
-@xray.step("RETRIEVE")
+@zenray.step("RETRIEVE")
 def content_based_filtering(user: dict) -> list[dict]:
     """Find movies similar to what the user likes."""
-    xray.metric("algorithm", "content-similarity")
+    zenray.metric("algorithm", "content-similarity")
     
     # Build user profile from watch history
     user_profile = {
@@ -344,10 +344,10 @@ def content_based_filtering(user: dict) -> list[dict]:
     return candidates[:200]
 
 
-@xray.step("RETRIEVE")
+@zenray.step("RETRIEVE")
 def popularity_based(user: dict) -> list[dict]:
     """Get popular movies as fallback/exploration."""
-    xray.metric("algorithm", "popularity")
+    zenray.metric("algorithm", "popularity")
     
     history = user["watch_history"]
     
@@ -374,7 +374,7 @@ def popularity_based(user: dict) -> list[dict]:
     return candidates[:100]
 
 
-@xray.step("TRANSFORM")
+@zenray.step("TRANSFORM")
 def merge_candidates(candidate_lists: list[list[dict]]) -> list[dict]:
     """Merge candidates from multiple sources."""
     merged = {}
@@ -395,16 +395,16 @@ def merge_candidates(candidate_lists: list[list[dict]]) -> list[dict]:
                     merged[movie_id][key] = movie[key]
     
     result = list(merged.values())
-    xray.metric("total_unique_candidates", len(result))
-    xray.metric("multi_source_candidates", sum(1 for m in result if len(m["sources"]) > 1))
+    zenray.metric("total_unique_candidates", len(result))
+    zenray.metric("multi_source_candidates", sum(1 for m in result if len(m["sources"]) > 1))
     
     return result
 
 
-@xray.step("RANK")
+@zenray.step("RANK")
 def score_candidates(candidates: list[dict], user: dict) -> list[dict]:
     """Calculate final scores for all candidates."""
-    xray.metric("scoring_model", "gradient-boosted-ranker")
+    zenray.metric("scoring_model", "gradient-boosted-ranker")
     
     for movie in candidates:
         # Combine different signals
@@ -421,12 +421,12 @@ def score_candidates(candidates: list[dict], user: dict) -> list[dict]:
         final_score = cf + content + pop + recency + quality
         movie["final_score"] = round(final_score, 4)
         
-        xray.score(movie, final_score)
+        zenray.score(movie, final_score)
     
     return sorted(candidates, key=lambda x: x["final_score"], reverse=True)
 
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def apply_filters(candidates: list[dict], user: dict) -> list[dict]:
     """Apply filtering rules."""
     kept = []
@@ -434,22 +434,22 @@ def apply_filters(candidates: list[dict], user: dict) -> list[dict]:
     for movie in candidates:
         # Already watched (double-check)
         if movie["id"] in user["watch_history"]:
-            xray.drop(movie, "already_watched")
+            zenray.drop(movie, "already_watched")
             continue
         
         # Very low rated
         if movie["rating"] < 4.0:
-            xray.drop(movie, "low_rating")
+            zenray.drop(movie, "low_rating")
             continue
         
         # Very low score
         if movie["final_score"] < 0.1:
-            xray.drop(movie, "low_score")
+            zenray.drop(movie, "low_score")
             continue
         
         # Too old (for casual users)
         if user["activity_level"] == "casual" and movie["year"] < 2010:
-            xray.drop(movie, "too_old_for_casual")
+            zenray.drop(movie, "too_old_for_casual")
             continue
         
         kept.append(movie)
@@ -457,7 +457,7 @@ def apply_filters(candidates: list[dict], user: dict) -> list[dict]:
     return kept
 
 
-@xray.step("SELECT")
+@zenray.step("SELECT")
 def diversify_recommendations(candidates: list[dict]) -> list[dict]:
     """Ensure diversity in genres and content types."""
     diversified = []
@@ -470,12 +470,12 @@ def diversify_recommendations(candidates: list[dict]) -> list[dict]:
         
         # Max 4 per genre
         if genre_counts[primary_genre] >= 4:
-            xray.drop(movie, "genre_saturation")
+            zenray.drop(movie, "genre_saturation")
             continue
         
         # Max 2 per director
         if director_counts[director] >= 2:
-            xray.drop(movie, "director_saturation")
+            zenray.drop(movie, "director_saturation")
             continue
         
         diversified.append(movie)
@@ -485,16 +485,16 @@ def diversify_recommendations(candidates: list[dict]) -> list[dict]:
         if len(diversified) >= 50:
             break
     
-    xray.metric("genres_represented", len(genre_counts))
-    xray.metric("directors_represented", len(director_counts))
+    zenray.metric("genres_represented", len(genre_counts))
+    zenray.metric("directors_represented", len(director_counts))
     
     return diversified
 
 
-@xray.step("TRANSFORM")
+@zenray.step("TRANSFORM")
 def apply_business_rules(candidates: list[dict], context: str) -> list[dict]:
     """Apply business rules and promotions."""
-    xray.metric("context", context)
+    zenray.metric("context", context)
     
     # Boost new releases for home context
     if context == "home":
@@ -511,7 +511,7 @@ def apply_business_rules(candidates: list[dict], context: str) -> list[dict]:
     candidates.sort(key=lambda x: x["final_score"], reverse=True)
     
     boosted_count = sum(1 for m in candidates if m.get("boosted"))
-    xray.metric("boosted_count", boosted_count)
+    zenray.metric("boosted_count", boosted_count)
     
     return candidates
 

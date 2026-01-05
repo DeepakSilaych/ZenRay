@@ -1,5 +1,44 @@
 const API_BASE = '/api'
 
+// Get auth token from localStorage
+function getAuthToken(): string | null {
+  return localStorage.getItem('auth_token')
+}
+
+// Create fetch with auth headers
+async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+  const token = getAuthToken()
+  const headers: Record<string, string> = {}
+  
+  // Copy existing headers
+  if (options.headers) {
+    if (options.headers instanceof Headers) {
+      options.headers.forEach((value, key) => {
+        headers[key] = value
+      })
+    } else if (Array.isArray(options.headers)) {
+      options.headers.forEach(([key, value]) => {
+        headers[key] = value
+      })
+    } else {
+      Object.assign(headers, options.headers)
+    }
+  }
+  
+  // Only set Content-Type if body is present and not FormData
+  if (options.body && !(options.body instanceof FormData)) {
+    if (!headers['Content-Type']) {
+      headers['Content-Type'] = 'application/json'
+    }
+  }
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  
+  return fetch(url, { ...options, headers })
+}
+
 export interface RunSummary {
   run_id: string
   pipeline_name: string
@@ -79,25 +118,25 @@ export async function fetchRuns(params?: {
   if (params?.status) query.set('status', params.status)
   if (params?.limit) query.set('limit', String(params.limit))
   
-  const res = await fetch(`${API_BASE}/runs?${query}`)
+  const res = await fetchWithAuth(`${API_BASE}/runs?${query}`)
   if (!res.ok) throw new Error('Failed to fetch runs')
   return res.json()
 }
 
 export async function fetchRunDetail(runId: string): Promise<RunDetail> {
-  const res = await fetch(`${API_BASE}/runs/${runId}`)
+  const res = await fetchWithAuth(`${API_BASE}/runs/${runId}`)
   if (!res.ok) throw new Error('Failed to fetch run')
   return res.json()
 }
 
 export async function fetchStepDetail(stepId: string): Promise<StepDetail> {
-  const res = await fetch(`${API_BASE}/steps/${stepId}`)
+  const res = await fetchWithAuth(`${API_BASE}/steps/${stepId}`)
   if (!res.ok) throw new Error('Failed to fetch step')
   return res.json()
 }
 
 export async function fetchStepCandidates(stepId: string): Promise<CandidateSet> {
-  const res = await fetch(`${API_BASE}/steps/${stepId}/candidates`)
+  const res = await fetchWithAuth(`${API_BASE}/steps/${stepId}/candidates`)
   if (!res.ok) throw new Error('Failed to fetch candidates')
   return res.json()
 }
@@ -119,7 +158,7 @@ export interface CandidateTraceResult {
 }
 
 export async function traceCandidate(runId: string, query: string): Promise<CandidateTraceResult> {
-  const res = await fetch(`${API_BASE}/runs/${runId}/trace?q=${encodeURIComponent(query)}`)
+  const res = await fetchWithAuth(`${API_BASE}/runs/${runId}/trace?q=${encodeURIComponent(query)}`)
   if (!res.ok) throw new Error('Failed to trace candidate')
   return res.json()
 }
@@ -179,8 +218,53 @@ export interface RunComparisonResult {
 }
 
 export async function compareRuns(runA: string, runB: string): Promise<RunComparisonResult> {
-  const res = await fetch(`${API_BASE}/compare?run_a=${encodeURIComponent(runA)}&run_b=${encodeURIComponent(runB)}`)
+  const res = await fetchWithAuth(`${API_BASE}/compare?run_a=${encodeURIComponent(runA)}&run_b=${encodeURIComponent(runB)}`)
   if (!res.ok) throw new Error('Failed to compare runs')
   return res.json()
+}
+
+// --- Auth API ---
+
+export interface ApiKey {
+  key_id: string
+  key_name: string
+  created_at: string
+  last_used_at: string | null
+}
+
+export interface CreateApiKeyResponse {
+  key_id: string
+  key_name: string
+  api_key: string
+  created_at: string
+  last_used_at: string | null
+}
+
+export async function getCurrentUser() {
+  const res = await fetchWithAuth(`${API_BASE}/auth/me`)
+  if (!res.ok) throw new Error('Failed to fetch user')
+  return res.json()
+}
+
+export async function createApiKey(name: string): Promise<CreateApiKeyResponse> {
+  const res = await fetchWithAuth(`${API_BASE}/auth/api-keys`, {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  })
+  if (!res.ok) throw new Error('Failed to create API key')
+  return res.json()
+}
+
+export async function listApiKeys(): Promise<ApiKey[]> {
+  const res = await fetchWithAuth(`${API_BASE}/auth/api-keys`)
+  if (!res.ok) throw new Error('Failed to fetch API keys')
+  return res.json()
+}
+
+export async function deleteApiKey(keyId: string): Promise<void> {
+  const res = await fetchWithAuth(`${API_BASE}/auth/api-keys/${keyId}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) throw new Error('Failed to delete API key')
 }
 

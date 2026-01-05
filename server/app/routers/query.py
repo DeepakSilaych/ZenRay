@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import Optional
 
 from app import db
 from app import blob_store
 from app import cache
 from app.models import RunSummary, StepSummary, RunDetail, StepDetail, RunStatus, StepKind
+from app.auth import require_auth
 
 router = APIRouter()
 
@@ -12,6 +13,7 @@ router = APIRouter()
 
 @router.get("/runs", response_model=list[RunSummary])
 async def list_runs(
+    current_user: dict = Depends(require_auth),
     pipeline_name: Optional[str] = None,
     status: Optional[RunStatus] = None,
     start_time: Optional[str] = Query(None, description="ISO format datetime"),
@@ -20,13 +22,16 @@ async def list_runs(
     offset: int = Query(0, ge=0),
 ):
     """Search runs by pipeline, status, time range."""
+    user_id = current_user["user_id"]
+    
     # Check cache first
-    cache_key = cache.runs_list_key(pipeline_name, status.value if status else None)
+    cache_key = cache.runs_list_key(pipeline_name, status.value if status else None, user_id)
     cached = await cache.cache_get(cache_key)
     if cached and offset == 0:
         return cached[:limit]
     
     runs = await db.search_runs(
+        user_id=user_id,
         pipeline_name=pipeline_name,
         status=status.value if status else None,
         start_time=start_time,
@@ -58,15 +63,19 @@ async def list_runs(
 
 
 @router.get("/runs/{run_id}", response_model=RunDetail)
-async def get_run(run_id: str):
+async def get_run(run_id: str, current_user: dict = Depends(require_auth)):
     """Get run detail with step timeline."""
+    user_id = current_user["user_id"]
+    
     # Check cache
     cache_key = cache.run_detail_key(run_id)
     cached = await cache.cache_get(cache_key)
     if cached:
-        return RunDetail(**cached)
+        # Verify ownership
+        if cached.get("run", {}).get("user_id") == user_id:
+            return RunDetail(**cached)
     
-    run = await db.get_run(run_id)
+    run = await db.get_run(run_id, user_id=user_id)
     if not run:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
     
@@ -91,9 +100,12 @@ async def get_run(run_id: str):
 async def trace_candidate(
     run_id: str,
     q: str = Query(..., description="Search term (matches id, name, or title)"),
+    current_user: dict = Depends(require_auth),
 ):
     """Trace a candidate through all steps of a run."""
-    run = await db.get_run(run_id)
+    user_id = current_user["user_id"]
+    
+    run = await db.get_run(run_id, user_id=user_id)
     if not run:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
     
@@ -163,6 +175,7 @@ def _search_candidates(candidates: list, query: str) -> list:
 
 @router.get("/steps", response_model=list[StepSummary])
 async def list_steps(
+    current_user: dict = Depends(require_auth),
     kind: Optional[StepKind] = None,
     run_id: Optional[str] = None,
     min_drop_ratio: Optional[float] = Query(None, ge=0, le=1, description="Min drop ratio (0-1)"),
@@ -171,9 +184,18 @@ async def list_steps(
     offset: int = Query(0, ge=0),
 ):
     """Search steps by kind, drop ratio."""
+    user_id = current_user["user_id"]
+    
+    # If run_id provided, verify ownership
+    if run_id:
+        run = await db.get_run(run_id, user_id=user_id)
+        if not run:
+            raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+    
     steps = await db.search_steps(
         kind=kind.value if kind else None,
         run_id=run_id,
+        user_id=user_id,
         min_drop_ratio=min_drop_ratio,
         max_drop_ratio=max_drop_ratio,
         limit=limit,
@@ -183,16 +205,28 @@ async def list_steps(
 
 
 @router.get("/steps/{step_id}", response_model=StepDetail)
-async def get_step(step_id: str):
+async def get_step(step_id: str, current_user: dict = Depends(require_auth)):
     """Get step detail with candidate set and artifacts."""
+    user_id = current_user["user_id"]
+    
     # Check cache
     cache_key = cache.step_key(step_id)
     cached = await cache.cache_get(cache_key)
     if cached:
-        return StepDetail(**cached)
+        # Verify ownership through run
+        step_run_id = cached.get("step", {}).get("run_id")
+        if step_run_id:
+            run = await db.get_run(step_run_id, user_id=user_id)
+            if run:
+                return StepDetail(**cached)
     
     step = await db.get_step(step_id)
     if not step:
+        raise HTTPException(status_code=404, detail=f"Step {step_id} not found")
+    
+    # Verify ownership through run
+    run = await db.get_run(step["run_id"], user_id=user_id)
+    if not run:
         raise HTTPException(status_code=404, detail=f"Step {step_id} not found")
     
     # Load candidate set from blob store
@@ -221,10 +255,17 @@ async def get_step(step_id: str):
 
 
 @router.get("/steps/{step_id}/candidates")
-async def get_step_candidates(step_id: str):
+async def get_step_candidates(step_id: str, current_user: dict = Depends(require_auth)):
     """Get full candidate set for a step."""
+    user_id = current_user["user_id"]
+    
     step = await db.get_step(step_id)
     if not step:
+        raise HTTPException(status_code=404, detail=f"Step {step_id} not found")
+    
+    # Verify ownership through run
+    run = await db.get_run(step["run_id"], user_id=user_id)
+    if not run:
         raise HTTPException(status_code=404, detail=f"Step {step_id} not found")
     
     candidate_set = await blob_store.load_candidate_set(step_id)
@@ -261,14 +302,17 @@ def _to_step_summary(step: dict) -> StepSummary:
 async def compare_runs(
     run_a: str = Query(..., description="First run ID"),
     run_b: str = Query(..., description="Second run ID"),
+    current_user: dict = Depends(require_auth),
 ):
     """
     Compare two runs side-by-side.
     Useful for A/B testing pipeline versions or debugging regressions.
     """
-    # Fetch both runs
-    run_a_data = await db.get_run(run_a)
-    run_b_data = await db.get_run(run_b)
+    user_id = current_user["user_id"]
+    
+    # Fetch both runs (with ownership check)
+    run_a_data = await db.get_run(run_a, user_id=user_id)
+    run_b_data = await db.get_run(run_b, user_id=user_id)
     
     if not run_a_data:
         raise HTTPException(status_code=404, detail=f"Run {run_a} not found")

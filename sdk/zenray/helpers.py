@@ -6,7 +6,7 @@ They are designed to be called within @step decorated functions.
 """
 from typing import Any, Optional
 
-from xray.context import get_current_step
+from zenray.context import get_current_step
 
 
 def _get_item_id(item: Any) -> str:
@@ -174,7 +174,7 @@ def tag(key: str, value: str) -> None:
             xray.tag("query_type", classify_query(query))
             return do_search(query)
     """
-    from xray.context import get_current_run
+    from zenray.context import get_current_run
     run = get_current_run()
     if run is None:
         return

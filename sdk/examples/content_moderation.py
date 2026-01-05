@@ -10,13 +10,13 @@ A multi-stage content moderation system with:
 
 Run: python examples/content_moderation.py
 """
-import xray
+import zenray
 import random
 import re
 import hashlib
 from datetime import datetime, timedelta
 
-xray.init()
+zenray.init()
 
 # =============================================================================
 # DATASET: User-Generated Content
@@ -165,7 +165,7 @@ print(f"Distribution: {dict(distribution)}")
 # MODERATION PIPELINE
 # =============================================================================
 
-@xray.pipeline("content-moderation", version="v5.2.0")
+@zenray.pipeline("content-moderation", version="v5.2.0")
 def moderate_content(content_id: str) -> dict:
     """
     Full content moderation pipeline.
@@ -181,9 +181,9 @@ def moderate_content(content_id: str) -> dict:
     if not content:
         return {"decision": "error", "reason": "content_not_found"}
     
-    xray.tag("content_type", content["content_type"])
-    xray.tag("platform", content["platform"])
-    xray.tag("user_id", content["user_id"])
+    zenray.tag("content_type", content["content_type"])
+    zenray.tag("platform", content["platform"])
+    zenray.tag("user_id", content["user_id"])
     
     # Run detection stages
     spam_result = detect_spam(content)
@@ -213,10 +213,10 @@ def moderate_content(content_id: str) -> dict:
     return finalize_decision(content, "approve", "passed_all_checks", 0.95)
 
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def detect_spam(content: dict) -> dict:
     """Detect spam content."""
-    xray.set_input_count(1)  # Single content item
+    zenray.set_input_count(1)  # Single content item
     
     text = content["text"].lower()
     signals = []
@@ -252,14 +252,14 @@ def detect_spam(content: dict) -> dict:
     is_spam = confidence > 0.6
     
     # Record output: 0 if spam (dropped), 1 if passed
-    xray.set_output_count(0 if is_spam else 1)
+    zenray.set_output_count(0 if is_spam else 1)
     
     if is_spam:
-        xray.drop(content, "spam_detected")
+        zenray.drop(content, "spam_detected")
     
-    xray.metric("spam_signals", [s[0] for s in signals])
-    xray.metric("spam_confidence", confidence)
-    xray.score(content, 1 - confidence)  # Score as "safe"
+    zenray.metric("spam_signals", [s[0] for s in signals])
+    zenray.metric("spam_confidence", confidence)
+    zenray.score(content, 1 - confidence)  # Score as "safe"
     
     return {
         "is_spam": is_spam,
@@ -268,15 +268,15 @@ def detect_spam(content: dict) -> dict:
     }
 
 
-@xray.step("JUDGE")
+@zenray.step("JUDGE")
 def detect_toxicity(content: dict) -> dict:
     """Detect toxic content using ML classifier (simulated)."""
-    xray.set_input_count(1)
+    zenray.set_input_count(1)
     
     text = content["text"].lower()
     
-    xray.metric("model", "distilbert-toxic-classifier")
-    xray.artifact("input", {"text": text[:200]})
+    zenray.metric("model", "distilbert-toxic-classifier")
+    zenray.artifact("input", {"text": text[:200]})
     
     # Simulate ML classifier
     toxic_words = ["idiot", "moron", "stupid", "hate", "shut up", "loser", "dumb", "fool"]
@@ -303,16 +303,16 @@ def detect_toxicity(content: dict) -> dict:
     confidence = min(1.0, toxic_score)
     is_toxic = confidence > 0.5
     
-    xray.artifact("output", {
+    zenray.artifact("output", {
         "toxic_score": confidence,
         "matched_words": matched_words,
     })
     
     if is_toxic and confidence > 0.9:
-        xray.drop(content, "high_toxicity")
+        zenray.drop(content, "high_toxicity")
     
-    xray.score(content, 1 - confidence)  # Score as "safe"
-    xray.set_output_count(0 if is_toxic and confidence > 0.9 else 1)
+    zenray.score(content, 1 - confidence)  # Score as "safe"
+    zenray.set_output_count(0 if is_toxic and confidence > 0.9 else 1)
     
     return {
         "is_toxic": is_toxic,
@@ -321,10 +321,10 @@ def detect_toxicity(content: dict) -> dict:
     }
 
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def detect_pii(content: dict) -> dict:
     """Detect personally identifiable information."""
-    xray.set_input_count(1)
+    zenray.set_input_count(1)
     text = content["text"]
     
     pii_types = []
@@ -358,10 +358,10 @@ def detect_pii(content: dict) -> dict:
     confidence = min(1.0, len(pii_types) * 0.4)
     
     if has_pii:
-        xray.drop(content, f"pii_detected_{','.join(pii_types)}")
+        zenray.drop(content, f"pii_detected_{','.join(pii_types)}")
     
-    xray.metric("pii_types_found", pii_types)
-    xray.set_output_count(0 if has_pii else 1)
+    zenray.metric("pii_types_found", pii_types)
+    zenray.set_output_count(0 if has_pii else 1)
     
     return {
         "has_pii": has_pii,
@@ -370,10 +370,10 @@ def detect_pii(content: dict) -> dict:
     }
 
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def detect_nsfw(content: dict) -> dict:
     """Detect NSFW content."""
-    xray.set_input_count(1)
+    zenray.set_input_count(1)
     text = content["text"].lower()
     
     # Check for NSFW indicators
@@ -383,10 +383,10 @@ def detect_nsfw(content: dict) -> dict:
     confidence = min(1.0, len(matches) * 0.4)
     
     if is_nsfw:
-        xray.drop(content, "nsfw_content")
+        zenray.drop(content, "nsfw_content")
     
-    xray.metric("nsfw_matches", matches)
-    xray.set_output_count(0 if is_nsfw else 1)
+    zenray.metric("nsfw_matches", matches)
+    zenray.set_output_count(0 if is_nsfw else 1)
     
     return {
         "is_nsfw": is_nsfw,
@@ -395,7 +395,7 @@ def detect_nsfw(content: dict) -> dict:
     }
 
 
-@xray.step("LLM_CALL")
+@zenray.step("LLM_CALL")
 def llm_nuanced_review(content: dict, toxicity_result: dict) -> dict:
     """Use LLM for nuanced content review."""
     prompt = f"""Review this content for policy violations:
@@ -412,8 +412,8 @@ Analyze if this content:
 
 Respond with: APPROVE, REJECT, or REVIEW"""
 
-    xray.artifact("prompt", prompt)
-    xray.metric("model", "gpt-4-turbo")
+    zenray.artifact("prompt", prompt)
+    zenray.metric("model", "gpt-4-turbo")
     
     # Simulate LLM response
     if toxicity_result["confidence"] > 0.8:
@@ -435,8 +435,8 @@ Detected signals: {', '.join(toxicity_result['categories'])}
 
 Recommendation: {recommendation.upper()}"""
 
-    xray.artifact("response", response)
-    xray.metric("recommendation", recommendation)
+    zenray.artifact("response", response)
+    zenray.metric("recommendation", recommendation)
     
     return {
         "recommendation": recommendation,
@@ -445,15 +445,15 @@ Recommendation: {recommendation.upper()}"""
     }
 
 
-@xray.step("SELECT")
+@zenray.step("SELECT")
 def finalize_decision(content: dict, decision: str, reason: str, confidence: float) -> dict:
     """Finalize the moderation decision."""
-    xray.set_input_count(1)
-    xray.set_output_count(1 if decision == "approve" else 0)
+    zenray.set_input_count(1)
+    zenray.set_output_count(1 if decision == "approve" else 0)
     
-    xray.metric("decision", decision)
-    xray.metric("reason", reason)
-    xray.metric("confidence", confidence)
+    zenray.metric("decision", decision)
+    zenray.metric("reason", reason)
+    zenray.metric("confidence", confidence)
     
     # Actions based on decision
     actions = {
@@ -480,8 +480,8 @@ def finalize_decision(content: dict, decision: str, reason: str, confidence: flo
         (decision == "redact" and ground_truth == "pii")
     )
     
-    xray.metric("ground_truth", ground_truth)
-    xray.metric("correct_decision", is_correct)
+    zenray.metric("ground_truth", ground_truth)
+    zenray.metric("correct_decision", is_correct)
     
     return result
 
@@ -490,14 +490,14 @@ def finalize_decision(content: dict, decision: str, reason: str, confidence: flo
 # BATCH PROCESSING (Realistic multi-item pipeline)
 # =============================================================================
 
-@xray.pipeline("content-moderation-batch", version="v2.0.0")
+@zenray.pipeline("content-moderation-batch", version="v2.0.0")
 def moderate_batch(content_items: list[dict]) -> dict:
     """
     Process a batch of content items through the moderation pipeline.
     
     This shows realistic drop rates across multiple stages.
     """
-    xray.tag("batch_size", str(len(content_items)))
+    zenray.tag("batch_size", str(len(content_items)))
     
     # Stage 1: Spam filter
     after_spam = batch_spam_filter(content_items)
@@ -522,7 +522,7 @@ def moderate_batch(content_items: list[dict]) -> dict:
     }
 
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def batch_spam_filter(items: list[dict]) -> list[dict]:
     """Filter spam from batch."""
     kept = []
@@ -542,21 +542,21 @@ def batch_spam_filter(items: list[dict]) -> list[dict]:
             spam_score += 0.2
         
         is_spam = spam_score > 0.5
-        xray.score(content, 1 - spam_score)
+        zenray.score(content, 1 - spam_score)
         
         if is_spam:
-            xray.drop(content, "spam")
+            zenray.drop(content, "spam")
         else:
             kept.append(content)
     
-    xray.metric("spam_detected", len(items) - len(kept))
+    zenray.metric("spam_detected", len(items) - len(kept))
     return kept
 
 
-@xray.step("JUDGE")
+@zenray.step("JUDGE")
 def batch_toxicity_filter(items: list[dict]) -> list[dict]:
     """Filter toxic content from batch."""
-    xray.metric("model", "distilbert-toxic-classifier")
+    zenray.metric("model", "distilbert-toxic-classifier")
     
     kept = []
     toxic_words = ["idiot", "moron", "stupid", "hate", "shut up", "loser", "dumb", "fool"]
@@ -568,18 +568,18 @@ def batch_toxicity_filter(items: list[dict]) -> list[dict]:
         toxic_score = min(1.0, toxic_score)
         
         is_toxic = toxic_score > 0.5
-        xray.score(content, 1 - toxic_score)
+        zenray.score(content, 1 - toxic_score)
         
         if is_toxic:
-            xray.drop(content, "toxic")
+            zenray.drop(content, "toxic")
         else:
             kept.append(content)
     
-    xray.metric("toxic_detected", len(items) - len(kept))
+    zenray.metric("toxic_detected", len(items) - len(kept))
     return kept
 
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def batch_pii_filter(items: list[dict]) -> list[dict]:
     """Filter content with PII from batch."""
     kept = []
@@ -602,15 +602,15 @@ def batch_pii_filter(items: list[dict]) -> list[dict]:
             if has_phone: reason.append("phone")
             if has_email: reason.append("email")
             if has_ssn: reason.append("ssn")
-            xray.drop(content, f"pii:{','.join(reason)}")
+            zenray.drop(content, f"pii:{','.join(reason)}")
         else:
             kept.append(content)
     
-    xray.metric("pii_detected", len(items) - len(kept))
+    zenray.metric("pii_detected", len(items) - len(kept))
     return kept
 
 
-@xray.step("FILTER")
+@zenray.step("FILTER")
 def batch_nsfw_filter(items: list[dict]) -> list[dict]:
     """Filter NSFW content from batch."""
     kept = []
@@ -621,21 +621,21 @@ def batch_nsfw_filter(items: list[dict]) -> list[dict]:
         is_nsfw = any(ind in text for ind in NSFW_INDICATORS)
         
         if is_nsfw:
-            xray.drop(content, "nsfw")
+            zenray.drop(content, "nsfw")
         else:
             kept.append(content)
     
-    xray.metric("nsfw_detected", len(items) - len(kept))
+    zenray.metric("nsfw_detected", len(items) - len(kept))
     return kept
 
 
-@xray.step("SELECT")
+@zenray.step("SELECT")
 def batch_approve(items: list[dict]) -> list[dict]:
     """Final approval - all remaining items pass."""
     for content in items:
-        xray.score(content, 1.0)  # Approved items get perfect score
+        zenray.score(content, 1.0)  # Approved items get perfect score
     
-    xray.metric("approved_count", len(items))
+    zenray.metric("approved_count", len(items))
     return items
 
 
