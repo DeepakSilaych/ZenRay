@@ -3,10 +3,11 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 
 export default defineConfig(({ mode }) => {
-  // Load env from parent directory
-  const env = loadEnv(mode, path.resolve(__dirname, '..'), '')
+  // Load env from current directory
+  const env = loadEnv(mode, __dirname, '')
   
   const dashboardPort = parseInt(env.DASHBOARD_PORT || '4002')
+  const serverHost = env.SERVER_HOST || 'localhost'
   const serverPort = parseInt(env.SERVER_PORT || '4003')
   
   return {
@@ -33,7 +34,7 @@ export default defineConfig(({ mode }) => {
       },
       proxy: {
         '/api/': {
-          target: `http://localhost:${serverPort}`,
+          target: `http://${serverHost}:${serverPort}`,
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, '')
         }

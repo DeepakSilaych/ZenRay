@@ -1,0 +1,5 @@
+# robots.txt for ZenRay
+User-agent: *
+Allow: /
+
+# Sitemap URL should be configured in deployment

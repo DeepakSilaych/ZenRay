@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { config } from '../config'
 
 export interface User {
   user_id: string
@@ -36,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const loginWithGoogle = async () => {
-    const res = await fetch('/api/auth/google/url')
+    const res = await fetch(`${config.apiUrl}/auth/google/url`)
     
     if (!res.ok) {
       throw new Error('Failed to get Google auth URL')
@@ -47,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const handleGoogleCallback = async (code: string) => {
-    const res = await fetch(`/api/auth/google/callback?code=${encodeURIComponent(code)}`, {
+    const res = await fetch(`${config.apiUrl}/auth/google/callback?code=${encodeURIComponent(code)}`, {
       method: 'POST',
     })
     

@@ -1,4 +1,6 @@
-const API_BASE = '/api'
+import { config } from './config'
+
+const API_BASE = config.apiUrl
 
 // Get auth token from localStorage
 function getAuthToken(): string | null {

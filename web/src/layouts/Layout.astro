@@ -1,9 +1,20 @@
 ---
+import { config } from '../config';
+
 interface Props {
-  title: string;
+  title?: string;
+  description?: string;
+  ogImage?: string;
 }
 
-const { title } = Astro.props;
+const { 
+  title = config.seo.title,
+  description = config.seo.description,
+  ogImage = config.seo.ogImage,
+} = Astro.props;
+
+const fullTitle = title === config.seo.title ? title : `${title} | ${config.siteName}`;
+const canonicalUrl = new URL(Astro.url.pathname, config.siteUrl);
 ---
 
 <!doctype html>
@@ -11,17 +22,66 @@ const { title } = Astro.props;
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Primary Meta Tags -->
+    <title>{fullTitle}</title>
+    <meta name="title" content={fullTitle} />
+    <meta name="description" content={description} />
+    <meta name="keywords" content={config.seo.keywords.join(', ')} />
+    <meta name="author" content="ZenRay" />
+    <link rel="canonical" href={canonicalUrl} />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/logo.svg" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={new URL(ogImage, config.siteUrl)} />
+    <meta property="og:site_name" content={config.siteName} />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content={canonicalUrl} />
+    <meta property="twitter:title" content={fullTitle} />
+    <meta property="twitter:description" content={description} />
+    <meta property="twitter:image" content={new URL(ogImage, config.siteUrl)} />
+    
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <title>{title}</title>
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": config.siteName,
+      "description": config.siteDescription,
+      "url": config.siteUrl,
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Any",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "ZenRay",
+        "url": config.siteUrl
+      }
+    })} />
+  </head>
+  
   <body class="bg-hatchet-bg text-hatchet-text font-sans antialiased relative min-h-screen overflow-x-hidden selection:bg-accent selection:text-black">
     <!-- Grid Background -->
     <div class="fixed inset-0 z-0 pointer-events-none">
       <div class="absolute inset-0 bg-grid-pattern bg-[length:48px_48px] opacity-100"></div>
-      <!-- Radial fade from center -->
       <div class="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(34,211,238,0.08),transparent)]"></div>
-      <!-- Bottom fade -->
       <div class="absolute inset-0 bg-gradient-to-t from-[#0a1029] via-transparent to-transparent"></div>
     </div>
     
@@ -44,7 +104,6 @@ const { title } = Astro.props;
     color: #fafafa;
   }
 
-  /* Scrollbar */
   ::-webkit-scrollbar {
     width: 10px;
   }

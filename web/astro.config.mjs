@@ -1,16 +1,24 @@
-import { defineConfig, envField } from 'astro/config'
+import { defineConfig } from 'astro/config'
 import tailwind from '@astrojs/tailwind'
+import sitemap from '@astrojs/sitemap'
 import { loadEnv } from 'vite'
-import path from 'path'
 
-// Load env from parent directory
-const env = loadEnv(process.env.NODE_ENV || 'development', path.resolve(process.cwd(), '..'), '')
+// Load env from current directory
+const env = loadEnv(process.env.NODE_ENV || 'development', process.cwd(), '')
 
 const webPort = parseInt(env.WEB_PORT || '4001')
+const siteUrl = env.PUBLIC_SITE_URL || 'http://localhost:4001'
+
+// Parse allowed hosts from env or use defaults
+const allowedHostsStr = env.ALLOWED_HOSTS || 'localhost,127.0.0.1'
+const allowedHosts = allowedHostsStr.split(',').map(h => h.trim())
 
 export default defineConfig({
-  integrations: [tailwind()],
-  site: 'https://zenray.live',
+  site: siteUrl,
+  integrations: [
+    tailwind(),
+    sitemap(),
+  ],
   server: {
     host: '0.0.0.0',
     port: webPort,
@@ -19,26 +27,12 @@ export default defineConfig({
     server: {
       host: '0.0.0.0',
       port: webPort,
-      allowedHosts: [
-        'zenray.live',
-        'app.zenray.live',
-        'api.zenray.live',
-        'localhost',
-        '127.0.0.1',
-        '.zenray.live'
-      ]
+      allowedHosts: allowedHosts
     },
     preview: {
       host: '0.0.0.0',
       port: webPort,
-      allowedHosts: [
-        'zenray.live',
-        'app.zenray.live',
-        'api.zenray.live',
-        'localhost',
-        '127.0.0.1',
-        '.zenray.live'
-      ]
+      allowedHosts: allowedHosts
     }
   }
 })

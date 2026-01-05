@@ -2,6 +2,17 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Build-time environment variables for Vite (VITE_ vars)
+ARG VITE_SERVER_URL
+ARG VITE_SITE_URL=https://zenray.live
+ARG VITE_GITHUB_URL=https://github.com/DeepakSilaych/ZenRay
+ARG VITE_DOCS_URL=https://zenray.live/docs
+
+ENV VITE_SERVER_URL=${VITE_SERVER_URL}
+ENV VITE_SITE_URL=${VITE_SITE_URL}
+ENV VITE_GITHUB_URL=${VITE_GITHUB_URL}
+ENV VITE_DOCS_URL=${VITE_DOCS_URL}
+
 # Copy package files first (for better caching)
 COPY package.json ./
 
@@ -11,9 +22,10 @@ RUN npm install
 # Copy source code (node_modules excluded via .dockerignore)
 COPY . .
 
-# Port from env (default 4002)
+# Runtime port
 ARG PORT=4002
 ENV DASHBOARD_PORT=${PORT}
+ENV SERVER_PORT=4003
 EXPOSE ${PORT}
 
 # Use dev server
