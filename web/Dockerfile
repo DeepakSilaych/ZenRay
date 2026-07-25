@@ -22,6 +22,10 @@ RUN npm install
 # Copy source code
 COPY . .
 
+# Persist build-time env into a .env file so Astro's loadEnv picks them up
+RUN printf "PUBLIC_SITE_URL=%s\nPUBLIC_DASHBOARD_URL=%s\nPUBLIC_API_URL=%s\nPUBLIC_GITHUB_URL=%s\nALLOWED_HOSTS=%s\n" \
+    "$PUBLIC_SITE_URL" "$PUBLIC_DASHBOARD_URL" "$PUBLIC_API_URL" "$PUBLIC_GITHUB_URL" "$ALLOWED_HOSTS" > .env
+
 # Build the site
 RUN npm run build
 
