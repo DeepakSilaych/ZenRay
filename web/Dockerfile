@@ -34,11 +34,12 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy built files
+# Copy built files + the .env so Astro's runtime preview server sees allowedHosts
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/astro.config.mjs ./
+COPY --from=builder /app/.env ./
 
 # Runtime port
 ARG PORT=4001

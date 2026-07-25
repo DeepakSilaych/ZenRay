@@ -21,14 +21,7 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       port: dashboardPort,
       strictPort: false,
-      allowedHosts: [
-        'zenray.live',
-        'app.zenray.live',
-        'api.zenray.live',
-        'localhost',
-        '127.0.0.1',
-        '.zenray.live'
-      ],
+      allowedHosts: (env.VITE_ALLOWED_HOSTS || 'zenray.live,app.zenray.live,api.zenray.live,localhost,127.0.0.1,.zenray.live').split(',').map(s => s.trim()),
       hmr: {
         clientPort: 443
       },
