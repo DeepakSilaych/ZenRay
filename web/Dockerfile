@@ -29,21 +29,8 @@ RUN printf "PUBLIC_SITE_URL=%s\nPUBLIC_DASHBOARD_URL=%s\nPUBLIC_API_URL=%s\nPUBL
 # Build the site
 RUN npm run build
 
-# Production stage
-FROM node:20-alpine
-
-WORKDIR /app
-
-# Copy built files + the .env so Astro's runtime preview server sees allowedHosts
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/astro.config.mjs ./
-COPY --from=builder /app/.env ./
-
-# Runtime port
-ARG PORT=4001
-ENV WEB_PORT=${PORT}
-EXPOSE ${PORT}
-
-CMD npm run preview -- --host 0.0.0.0 --port ${WEB_PORT:-4001}
+# Production stage — serve the static dist via nginx (bypasses Astro preview's host filter)
+FROM nginx:alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+RUN printf 'server {\n  listen 4001;\n  root /usr/share/nginx/html;\n  index index.html;\n  location / { try_files $uri $uri/ /index.html; }\n}\n' > /etc/nginx/conf.d/default.conf
+EXPOSE 4001
