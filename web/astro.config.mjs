@@ -1,6 +1,5 @@
 import { defineConfig } from 'astro/config'
 import tailwind from '@astrojs/tailwind'
-import sitemap from '@astrojs/sitemap'
 import { loadEnv } from 'vite'
 
 // Load env from current directory
@@ -17,7 +16,6 @@ export default defineConfig({
   site: siteUrl,
   integrations: [
     tailwind(),
-    sitemap(),
   ],
   server: {
     host: '0.0.0.0',
